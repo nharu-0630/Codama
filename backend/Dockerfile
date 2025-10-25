@@ -23,4 +23,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 ENTRYPOINT []
 
-CMD ["uv", "run", "uvicorn", "--host", "0.0.0.0", "--port", "80", "main:app"]
+CMD uv run uvicorn --host 0.0.0.0 --port $PORT main:app
