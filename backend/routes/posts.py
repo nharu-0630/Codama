@@ -2,17 +2,17 @@
 
 import asyncio
 import threading
+from time import sleep
 from typing import Any
 
 from config.database import supabase
+from config.settings import settings
 from fastapi import APIRouter, Depends, HTTPException
 from schemas.model import (
-    Cell,
     CreatePostRequest,
     CreatePostResponse,
-    LLMPost,
+    Post,
     PostsResponse,
-    UserPost,
 )
 from utils.auth import get_current_user
 from utils.coordinates import add_random_offset
@@ -41,25 +41,59 @@ async def get_posts(lat: float, lon: float):
         .execute()
     )
     return PostsResponse(
-        user_posts=[
-            UserPost(
-                id=post["uuid"],  # type: ignore
+        posts=[
+            Post(
+                uuid=post["uuid"],  # type: ignore
                 content=post["content"],  # type: ignore
                 location=decode_wkt_location(str(post["location"])),  # type: ignore
                 created_at=post["created_at"],  # type: ignore
-                llm_post=LLMPost(
-                    uuid=post["llm_posts"]["uuid"],  # type: ignore
-                    content=post["llm_posts"]["content"],  # type: ignore
-                    location=decode_wkt_location(str(post["llm_posts"]["location"])),  # type: ignore
-                    created_at=post["llm_posts"]["created_at"],  # type: ignore
-                )
-                if post.get("llm_posts")  # type: ignore
-                else None,
+                replies=[
+                    Post(
+                        uuid=reply["uuid"],  # type: ignore
+                        content=reply["content"],  # type: ignore
+                        location=decode_wkt_location(str(reply["location"])),  # type: ignore
+                        created_at=reply["created_at"],  # type: ignore
+                        replies=[],
+                    )
+                    for reply in post.get("llm_posts", [])  # type: ignore
+                ],
             )
             for post in posts.data
         ],
     )
 
+@router.get("/{post_uuid}", response_model=Post, dependencies=[Depends(get_current_user)])
+async def get_post(post_uuid: str):
+    """Get a specific post by UUID."""
+    post_response = (
+        supabase.from_("user_posts")
+        .select(
+            "*, llm_posts(id, content, location, created_at)"
+        )
+        .eq("uuid", post_uuid)
+        .single()
+        .execute()
+    )
+    post_data = post_response.data
+    if not post_data:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    return Post(
+        uuid=post_data["uuid"],  # type: ignore
+        content=post_data["content"],  # type: ignore
+        location=decode_wkt_location(str(post_data["location"])),  # type: ignore
+        created_at=post_data["created_at"],  # type: ignore
+        replies=[
+            Post(
+                uuid=reply["uuid"],  # type: ignore
+                content=reply["content"],  # type: ignore
+                location=decode_wkt_location(str(reply["location"])),  # type: ignore
+                created_at=reply["created_at"],  # type: ignore
+                replies=[],
+            )
+            for reply in post_data.get("llm_posts", [])  # type: ignore
+        ],
+    )
 
 @router.post("", response_model=CreatePostResponse)
 async def create_post(
@@ -82,20 +116,6 @@ async def create_post(
     if not created_post.data:
         raise HTTPException(status_code=500, detail="Failed to create post")
 
-    async def create_llm_post():
-        llm_response = await generate_post(request.content, area_id)
-        if llm_response is None:
-            return
-        llm_location = add_random_offset(request.lat, request.lon)
-        llm_post: dict[str, Any] = {
-            "content": llm_response,
-            "user_post_uuid": created_post.data[0]["uuid"],  # type: ignore
-            "location": encode_wkt_location(llm_location[0], llm_location[1]),
-        }
-        supabase.from_("llm_posts").insert(llm_post).execute()
-
-    threading.Thread(target=lambda: asyncio.run(create_llm_post())).start()
-
     embedding = await generate_embedding(request.content)
     embedding_record: dict[str, Any] = {
         "user_post_uuid": created_post.data[0]["uuid"],  # type: ignore
@@ -103,18 +123,38 @@ async def create_post(
     }
 
     similar_posts = supabase.rpc(
-        "find_similar_posts", {"query_embedding": embedding, "match_count": 5}
+        "find_similar_posts",
+        {
+            "query_embedding": embedding,
+            "match_count": settings.CODAMA_MAX_COUNT - settings.CODAMA_AI_COUNT,
+        },
     ).execute()
     similar_post_uuids = [  # type: ignore
-        record["user_post_uuid"]
+        str(record["user_post_uuid"])  # type: ignore
         for record in similar_posts.data  # type: ignore
     ]
 
-    print(f"Similar posts found: {similar_post_uuids}")
+    generate_count = min(
+        settings.CODAMA_MIN_COUNT - len(similar_post_uuids), settings.CODAMA_AI_COUNT
+    )
+    async def generate_posts():
+        for _ in range(generate_count):
+            llm_response = await generate_post(request.content, area_id)
+            if llm_response is None:
+                return
+            llm_location = add_random_offset(request.lat, request.lon)
+            llm_post: dict[str, Any] = {
+                "content": llm_response,
+                "user_post_uuid": created_post.data[0]["uuid"],  # type: ignore
+                "location": encode_wkt_location(llm_location[0], llm_location[1]),
+            }
+            supabase.from_("llm_posts").insert(llm_post).execute()
+            sleep(1)
 
-    supabase.from_("post_embeddings").insert(embedding_record).execute()
+    threading.Thread(target=lambda: asyncio.run(generate_posts())).start()
+    supabase.from_("embedding_user_posts").insert(embedding_record).execute()
+
 
     return CreatePostResponse(
-        success=True,
-        user_post_id=created_post.data[0]["id"],  # type: ignore
+        replies=
     )

@@ -1,8 +1,8 @@
 create index on public.embedding_user_posts using hnsw (embedding vector_ip_ops);
 
-create or replace function find_similar_posts (
+create or replace function public.find_similar_posts (
   query_embedding vector (1536),
-  threshold float
+  match_count int
 )
 returns setof public.embedding_user_posts
 language plpgsql
@@ -10,8 +10,8 @@ as $$
 begin
   return query
   select *
-  from public.embedding_user_posts as documents
-  where documents.embedding <#> query_embedding < -threshold
-  order by documents.embedding <#> query_embedding;
+  from public.embedding_user_posts
+  order by embedding <#> query_embedding
+  limit match_count;
 end;
 $$;

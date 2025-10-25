@@ -1,7 +1,6 @@
 """API schemas for the application."""
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -14,25 +13,21 @@ class PromptBase(BaseModel):
     created_at: datetime
 
 
-class BasePost(BaseModel):
+class Post(BaseModel):
     uuid: UUID
     content: str
     location: tuple[float, float]
+    replies: list["Post"] = []
     created_at: datetime
 
 
-class LLMPost(BasePost):
-    pass
+Post.update_forward_refs()  # type: ignore
 
 
 class Cell(BaseModel):
     id: int
     geo_hash: str
     location: tuple[float, float]
-
-
-class UserPost(BasePost):
-    llm_post: Optional[LLMPost]
 
 
 class Area(BaseModel):
@@ -46,7 +41,7 @@ class CurrentResponse(BaseModel):
 
 
 class PostsResponse(BaseModel):
-    user_posts: list[UserPost]
+    posts: list[Post]
 
 
 class CreatePostRequest(BaseModel):
@@ -56,8 +51,8 @@ class CreatePostRequest(BaseModel):
 
 
 class CreatePostResponse(BaseModel):
-    success: bool
-    user_post_id: int
+    post: Post
+    similars: list[Post]
 
 
 class SignupResponse(BaseModel):
