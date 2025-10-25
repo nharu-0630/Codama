@@ -17,6 +17,8 @@ class ViewBounds {
 }
 
 class BubbleManager {
+  static const int maxBubbleCount = 30;
+
   /// 画面内の吹き出しを配置
   List<BubblePosition> layoutBubbles(
     List<Post> posts,
@@ -30,8 +32,16 @@ class BubbleManager {
         post.lng >= viewBounds.west &&
         post.lng <= viewBounds.east).toList();
 
+    // 投稿を作成日時でソート（新しい順）
+    visiblePosts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    // 最大数に制限
+    final limitedPosts = visiblePosts.length > maxBubbleCount
+        ? visiblePosts.take(maxBubbleCount).toList()
+        : visiblePosts;
+
     // BubblePosition作成（座標調整なし）
-    final bubblePositions = visiblePosts.map((post) {
+    final bubblePositions = limitedPosts.map((post) {
       final displayKind = determineDisplayKind(post, currentUserId);
       return BubblePosition(
         post: post,

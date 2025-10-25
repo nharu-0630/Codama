@@ -6,6 +6,7 @@ import '../models/post.dart';
 class PostService {
   static const String _baseUrl = 'http://localhost:8000';
   static const bool _useApi = false; // TODO: 本番時はtrueに変更
+  static const int _maxPosts = 100; // 最大保持投稿数
 
   // モックデータ（ローカル開発用）
   final List<Post> _mockPosts = [];
@@ -81,6 +82,10 @@ class PostService {
     );
     
     _mockPosts.add(post);
+    
+    // 最大投稿数を超えたら古い投稿を削除
+    _trimOldPosts();
+    
     return post;
   }
 
@@ -94,23 +99,71 @@ class PostService {
   }
 
   Future<void> _addDemoData() async {
-    await _createPostMock(
-      lat: 35.4658,
-      lng: 139.6201,
-      text: 'こんにちは！横浜駅です',
-    );
-    
-    await _createPostMock(
-      lat: 35.4660,
-      lng: 139.6205,
-      text: 'この場所は人が多いですね',
-    );
-    
-    await _createPostMock(
-      lat: 35.4665,
-      lng: 139.6210,
-      text: '良い天気です！',
-    );
+    // 横浜駅周辺の30件のデモデータ
+    final demoMessages = [
+      'こんにちは！横浜駅です',
+      'この場所は人が多いですね',
+      '良い天気です！',
+      'ここでランチを食べました',
+      '電車が遅れているみたい',
+      'イベントやってる！',
+      '新しいお店ができてる',
+      '工事中で通りにくいです',
+      '桜が綺麗に咲いています',
+      '雨が降ってきました',
+      'ここで待ち合わせしてます',
+      '迷子になりました...',
+      '素敵なカフェ見つけた！',
+      '混雑してます',
+      'WiFiが使えますよ',
+      '景色がいいですね',
+      '静かで落ち着きます',
+      '昔ここに来たことがある',
+      'おすすめのスポットです',
+      '夜景が綺麗！',
+      '朝の散歩に最適',
+      'ここで休憩中',
+      '友達と遊んでます',
+      '初めて来ました',
+      '懐かしい場所',
+      '写真撮影スポット',
+      'ペットも入れます',
+      '子供が遊べる場所',
+      'バリアフリー対応',
+      '今日は空いてる',
+    ];
+
+    // 横浜駅を中心に半径500m程度の範囲でランダムに配置
+    final baseLatitude = 35.4658;
+    final baseLongitude = 139.6201;
+    final random = DateTime.now().millisecondsSinceEpoch;
+
+    for (var i = 0; i < demoMessages.length; i++) {
+      // ランダムな位置を生成（約±0.0045度 = 約±500m）
+      final latOffset = (i * 7 % 20 - 10) * 0.00045;
+      final lngOffset = ((i + 3) * 11 % 20 - 10) * 0.00045;
+
+      await _createPostMock(
+        lat: baseLatitude + latOffset,
+        lng: baseLongitude + lngOffset,
+        text: demoMessages[i],
+      );
+
+      // 少し遅延を入れて作成時刻に差をつける
+      await Future.delayed(const Duration(milliseconds: 10));
+    }
+  }
+
+  /// 古い投稿を削除して最大投稿数を維持
+  void _trimOldPosts() {
+    if (_mockPosts.length > _maxPosts) {
+      // 作成日時でソート（古い順）
+      _mockPosts.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      
+      // 古い投稿を削除
+      final removeCount = _mockPosts.length - _maxPosts;
+      _mockPosts.removeRange(0, removeCount);
+    }
   }
 
   // =============
