@@ -3,20 +3,21 @@
 from typing import Any
 
 import pygeohash as gh  # type: ignore
+from config.database import gmaps
+from config.settings import settings
 from fastapi import HTTPException
+from repositories.area_repository import get_all_areas
+from repositories.cell_repository import create_cell, get_cell_by_geo_hash
 from shapely import wkb
 from shapely.geometry import Point
 
-from config.database import gmaps, supabase
-from config.settings import settings
 
-
-def encode_location(lat: float, lon: float) -> str:
+def encode_geo_hash(lat: float, lon: float) -> str:
     """Encode latitude and longitude to geohash."""
     return gh.encode(lat, lon, precision=settings.GEO_HASH_PRECISION)
 
 
-def decode_geohash(geo_hash: str) -> tuple[float, float]:
+def decode_geo_hash(geo_hash: str) -> tuple[float, float]:
     """Decode geohash to latitude and longitude."""
     pos = gh.decode(geo_hash)
     return pos.latitude, pos.longitude
@@ -24,46 +25,39 @@ def decode_geohash(geo_hash: str) -> tuple[float, float]:
 
 def get_or_create_cell(lat: float, lon: float) -> dict[str, Any]:
     """Get or create a cell for the given coordinates."""
-    geo_hash = encode_location(lat, lon)
+
+    geo_hash = encode_geo_hash(lat, lon)
     center_pos = gh.decode(geo_hash)
 
-    cell = (
-        supabase.from_("cells")
-        .select("id, geo_hash, area_id, created_at, location")
-        .like("geo_hash", f"{geo_hash}%")
-        .execute()
-    )
+    # Try to find existing cell
+    db_cell = get_cell_by_geo_hash(geo_hash)
 
-    if not cell.data:
+    if not db_cell:
         # Get area name from Google Maps
         area_name = _get_area_name_from_geocode(lat, lon)
         if not area_name:
             raise HTTPException(status_code=404, detail="Area not found from geocode")
 
-        # Get or create area
-        area = supabase.from_("areas").select("*").eq("name", area_name).execute()
-        if not area.data:
+        # Find area by name
+        db_areas = get_all_areas()
+        db_area = next((area for area in db_areas if area.name == area_name), None)
+        if not db_area:
             raise HTTPException(status_code=404, detail="Area not found")
 
         # Create new cell
-        new_cell: dict[str, Any] = {
-            "geo_hash": geo_hash,
-            "location": f"POINT({center_pos.longitude} {center_pos.latitude})",
-            "area_id": int(area.data[0]["id"]),  # type: ignore
-        }
-        supabase.from_("cells").insert(new_cell).execute()
-
-        # Fetch the created cell
-        cell = (
-            supabase.from_("cells")
-            .select("id, geo_hash, area_id, created_at, location")
-            .like("geo_hash", f"{geo_hash}%")
-            .execute()
+        location_wkt = f"POINT({center_pos.longitude} {center_pos.latitude})"
+        db_cell = create_cell(
+            geo_hash=geo_hash, location_wkt=location_wkt, area_id=db_area.id
         )
-        if not cell.data:
-            raise HTTPException(status_code=404, detail="Cell not found")
 
-    return cell.data[0]  # type: ignore
+    # Return as dict for backward compatibility
+    return {
+        "id": db_cell.id,
+        "geo_hash": db_cell.geo_hash,
+        "area_id": db_cell.area_id,
+        "created_at": db_cell.created_at,
+        "location": db_cell.location,
+    }
 
 
 def decode_wkt_location(location_wkt: str) -> tuple[float, float]:

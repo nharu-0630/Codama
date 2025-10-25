@@ -1,18 +1,13 @@
 """Area routes."""
 
 from fastapi import APIRouter
-
-from config.database import supabase
-from schemas.model import Area
+from repositories.area_repository import get_all_areas
+from schemas.api import APIArea
 
 router = APIRouter(prefix="/areas", tags=["areas"])
 
 
-@router.get("", response_model=list[Area])
+@router.get("", response_model=list[APIArea])
 async def get_areas():
-    """Get all available areas."""
-    areas = supabase.from_("areas").select("*").execute()
-    return [
-        Area(id=area["id"], name=area["name"], created_at=area["created_at"])  # type: ignore
-        for area in areas.data
-    ]
+    db_areas = get_all_areas()
+    return [APIArea(id=area.id, name=area.name) for area in db_areas]

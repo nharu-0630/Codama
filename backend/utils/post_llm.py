@@ -2,7 +2,10 @@
 
 import openai
 
-from config.database import supabase
+from repositories.area_repository import get_area_by_id
+from repositories.cell_repository import get_cells_by_area_id
+from repositories.post_repository import get_recent_user_posts_by_cell_ids
+from repositories.prompt_repository import get_prompts_by_area_id
 
 POST_TEMPLATE = """
 # 指示
@@ -51,43 +54,31 @@ POST_TEMPLATE = """
 
 async def generate_post(content: str, area_id: int) -> str | None:
     """Generate a response from the LLM based on the given content and area."""
+
     # Get area information
-    area = supabase.from_("areas").select("*").eq("id", area_id).execute()
-    if not area.data:
+    db_area = get_area_by_id(area_id)
+    if not db_area:
         return None
 
     # Get the latest prompt summary for the given area_id
-    summary = (
-        supabase.from_("prompts")
-        .select("*")
-        .eq("area_id", area_id)
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-    )
+    db_prompts = get_prompts_by_area_id(area_id)
     summary_text: str | None = None
-    if summary.data:
-        summary_text = str(summary.data[0]["prompt"])  # type: ignore
+
+    if db_prompts:
+        # Sort by created_at descending
+        sorted_prompts = sorted(db_prompts, key=lambda p: p.created_at, reverse=True)
+        summary_text = sorted_prompts[0].prompt
 
     # Get cell_ids for the given area_id
-    cells = supabase.from_("cells").select("id").eq("area_id", area_id).execute()
-    cell_ids = [int(cell["id"]) for cell in cells.data] if cells.data else []  # type: ignore
+    db_cells = get_cells_by_area_id(area_id)
+    cell_ids = [cell.id for cell in db_cells]
 
     shots_text: str | None = None
-    if not cell_ids:
-        # Get user_posts filtered by cell_ids
-        shots = (
-            supabase.from_("user_posts")
-            .select("*")
-            .in_("cell_id", cell_ids)
-            .order("created_at", desc=True)
-            .limit(5)
-            .execute()
-        )
-        if shots.data:
-            shots_text = "\n".join(
-                [f"- {shot['content']}" for shot in shots.data]  # type: ignore
-            )
+    if cell_ids:
+        # Get recent user_posts filtered by cell_ids (limit 5)
+        db_posts = get_recent_user_posts_by_cell_ids(cell_ids, limit=5)
+        if db_posts:
+            shots_text = "\n".join([f"- {post.content}" for post in db_posts])
 
     resp = openai.chat.completions.create(
         model="gpt-4o",
@@ -95,7 +86,7 @@ async def generate_post(content: str, area_id: int) -> str | None:
             {
                 "role": "system",
                 "content": POST_TEMPLATE.format(
-                    area=str(area.data[0]["name"]),  # type: ignore
+                    area=db_area.name,
                     shots=shots_text if shots_text else "なし",
                     user_post=content,
                     summary=summary_text if summary_text else "なし",

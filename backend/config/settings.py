@@ -16,6 +16,8 @@ class Settings:
     CODAMA_MIN_COUNT: int = int(os.environ.get("CODAMA_MIN_COUNT", 3))
     CODAMA_MAX_COUNT: int = int(os.environ.get("CODAMA_MAX_COUNT", 10))
     CODAMA_THRESHOLD: float = float(os.environ.get("CODAMA_THRESHOLD", 0.7))
+    CODAMA_RELATIONSHIP_HOUR: int = int(os.environ.get("CODAMA_RELATIONSHIP_HOUR", 24))
+    CODAMA_RELATIONSHIP_COUNT: int = int(os.environ.get("CODAMA_RELATIONSHIP_COUNT", 3))
     SUPABASE_URL: str = os.environ.get("SUPABASE_URL", "http://127.0.0.1:54321")
     SUPABASE_KEY: str = os.environ.get("SUPABASE_KEY", "")
     GOOGLE_MAPS_API_KEY: str = os.environ.get("GOOGLE_MAPS_API_KEY", "")
