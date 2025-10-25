@@ -7,6 +7,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../location/services/location_service.dart';
 import '../../location/services/live_location_controller.dart';
+import '../../location/services/cell_tracking_service.dart';
 import '../../../core/constants/location_config.dart';
 import '../widgets/dev_tools/dev_joystick.dart';
 import '../widgets/dev_tools/dev_location_service.dart';
@@ -37,6 +38,7 @@ class _MapScreenState extends State<MapScreen> {
   final LocationService _locationService = LocationService();
   final LiveLocationController _liveLocationController =
       LiveLocationController();
+  final CellTrackingService _cellTrackingService = CellTrackingService();
   LatLng? _currentLocation;
   String _locationStatus = '位置情報未取得';
   double? _lastZoomLevel;
@@ -49,7 +51,6 @@ class _MapScreenState extends State<MapScreen> {
   late PostService _postService;
   List<Post> _posts = [];
   List<BubblePosition> _bubblePositions = [];
-  bool _isLoadingPosts = false;
 
   @override
   void initState() {
@@ -68,12 +69,14 @@ class _MapScreenState extends State<MapScreen> {
 
     // サービス初期化とデモデータ追加
     _initializePostService();
+    _initializeCellTracking();
   }
 
   @override
   void dispose() {
     _liveLocationController.dispose();
     _postService.dispose();
+    _cellTrackingService.dispose();
     super.dispose();
   }
 
@@ -96,11 +99,8 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _initializePostService() async {
     try {
       await _postService.initialize();
-
-      // 初期化完了後に投稿を読み込み
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadPosts();
-      });
+      // API駆動のため、初期投稿読み込みは行わない
+      // セル変更時にAPIから投稿が取得される
     } catch (e) {
       LocationConfig.log(
         LocationConfig.mapScreenTag,
@@ -109,32 +109,30 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  /// 投稿を読み込み
-  Future<void> _loadPosts() async {
-    if (_isLoadingPosts) return;
-
-    setState(() {
-      _isLoadingPosts = true;
-    });
-
+  /// セル追跡サービスを初期化
+  Future<void> _initializeCellTracking() async {
     try {
-      final posts = await _postService.getAllPosts();
-      setState(() {
-        _posts = posts;
-        _isLoadingPosts = false;
+      await _cellTrackingService.initialize();
+
+      // 投稿ストリームを監視
+      _cellTrackingService.postsStream?.listen((posts) {
+        setState(() {
+          _posts = posts;
+        });
+        _updateBubblePositions();
+        LocationConfig.log(
+          LocationConfig.mapScreenTag,
+          '📱 セル変更により投稿を更新しました: ${posts.length}件',
+        );
       });
-      _updateBubblePositions();
+    } catch (e) {
       LocationConfig.log(
         LocationConfig.mapScreenTag,
-        '💬 投稿データを読み込みました: ${posts.length}件',
+        '❌ セル追跡サービス初期化エラー: $e',
       );
-    } catch (e) {
-      setState(() {
-        _isLoadingPosts = false;
-      });
-      LocationConfig.log(LocationConfig.mapScreenTag, '❌ 投稿読み込みエラー: $e');
     }
   }
+
 
   /// 特定座標に投稿を作成
   Future<void> createPostAtLocation({
@@ -145,8 +143,11 @@ class _MapScreenState extends State<MapScreen> {
     try {
       await _postService.createPost(lat: lat, lng: lng, text: text);
 
-      // 投稿作成後に再読み込み
-      await _loadPosts();
+      // 投稿作成後、現在の位置情報でセル変更を再チェック
+      // これにより新しい投稿も含めて最新の投稿リストが取得される
+      if (_currentLocation != null) {
+        await _cellTrackingService.onLocationChanged(_currentLocation!);
+      }
 
       LocationConfig.log(LocationConfig.mapScreenTag, '✅ 投稿作成成功: $text');
     } catch (e) {
@@ -310,6 +311,9 @@ class _MapScreenState extends State<MapScreen> {
           _locationStatus = '位置情報追跡中';
         });
 
+        // セル追跡サービスに位置変更を通知
+        _cellTrackingService.onLocationChanged(location);
+
         // 地図の中心は自動移動しない（ユーザーが自由に地図を操作できるように）
         // コンパスボタンで現在地に戻ることができる
       },
@@ -397,6 +401,9 @@ class _MapScreenState extends State<MapScreen> {
 
     // LocationServiceに仮想位置を設定
     _locationService.setVirtualLocation(newLocation);
+
+    // セル追跡サービスに位置変更を通知
+    _cellTrackingService.onLocationChanged(newLocation);
 
     // ジョイスティック操作時は地図中心を現在地に追従
     _mapController.move(newLocation, _mapController.camera.zoom);
