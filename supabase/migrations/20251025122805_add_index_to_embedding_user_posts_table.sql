@@ -7,6 +7,7 @@ create or replace function public.find_similar_posts (
 )
 returns setof public.embedding_user_posts
 language plpgsql
+set search_path = public, vector
 as $$
 begin
   return query

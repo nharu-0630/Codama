@@ -1,3 +1,4 @@
+import json
 from typing import Any, cast
 from uuid import UUID
 
@@ -19,6 +20,9 @@ def create_embedding(
     response = supabase.from_("embedding_user_posts").insert(embedding_data).execute()
     # 作成されたembeddingをDBEmbeddingUserPostモデルに変換して返却
     data = cast(list[dict[str, Any]], response.data)
+    # embeddingが文字列の場合はリストに変換
+    if isinstance(data[0]["embedding"], str):
+        data[0]["embedding"] = json.loads(data[0]["embedding"])
     return DBEmbeddingUserPost(**data[0])
 
 
@@ -46,4 +50,8 @@ def find_similar_posts(
 
     # 取得したデータをDBEmbeddingUserPostモデルのリストに変換
     data = cast(list[dict[str, Any]], response.data)
+    # embeddingが文字列の場合はリストに変換
+    for item in data:
+        if isinstance(item["embedding"], str):
+            item["embedding"] = json.loads(item["embedding"])
     return [DBEmbeddingUserPost(**item) for item in data]
