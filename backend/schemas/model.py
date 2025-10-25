@@ -52,7 +52,7 @@ class CreatePostRequest(BaseModel):
 
 class CreatePostResponse(BaseModel):
     post: Post
-    similars: list[Post]
+    similar_posts: list[Post]
 
 
 class SignupResponse(BaseModel):
