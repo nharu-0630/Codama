@@ -31,19 +31,18 @@ class LocationConfig {
   );
 
   /// 地図の初期設定
-  static const double defaultZoom = 15.0;
-  static const double compassZoom = 16.0;
+  static const double defaultZoom = 17.0;
+  static const double compassZoom = 17.0;
   static const double maxZoom = 18.0;
-  static const double minZoom = 10.0;
+  static const double minZoom = 16.0;
 
   /// 位置精度の警告閾値
-  static const double lowAccuracyThreshold = 100.0;   // 低精度警告
+  static const double lowAccuracyThreshold = 100.0; // 低精度警告
 
   /// ログ出力用のタグ
   static const String liveLocationControllerTag = 'LiveLocationController';
   static const String locationServiceTag = 'LocationService';
   static const String mapScreenTag = 'MapScreen';
-
 
   /// 権限状態を日本語文字列に変換
   static String permissionToString(LocationPermission permission) {

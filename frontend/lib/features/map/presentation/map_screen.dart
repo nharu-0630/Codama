@@ -59,13 +59,13 @@ class _MapScreenState extends State<MapScreen> {
 
     // PostServiceを初期化
     _postService = PostService();
-    
+
     // 開発ツール初期化
     _initializeDevTools();
 
     _checkInitialLocation();
     _startLocationTracking();
-    
+
     // サービス初期化とデモデータ追加
     _initializePostService();
   }
@@ -96,21 +96,23 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _initializePostService() async {
     try {
       await _postService.initialize();
-      
-      
+
       // 初期化完了後に投稿を読み込み
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadPosts();
       });
     } catch (e) {
-      LocationConfig.log(LocationConfig.mapScreenTag, '❌ PostService初期化エラー: $e');
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        '❌ PostService初期化エラー: $e',
+      );
     }
   }
 
   /// 投稿を読み込み
   Future<void> _loadPosts() async {
     if (_isLoadingPosts) return;
-    
+
     setState(() {
       _isLoadingPosts = true;
     });
@@ -139,23 +141,14 @@ class _MapScreenState extends State<MapScreen> {
     required double lat,
     required double lng,
     required String text,
-    PostKind kind = PostKind.user,
   }) async {
     try {
-      await _postService.createPost(
-        lat: lat,
-        lng: lng,
-        text: text,
-        kind: kind,
-      );
-      
+      await _postService.createPost(lat: lat, lng: lng, text: text);
+
       // 投稿作成後に再読み込み
       await _loadPosts();
-      
-      LocationConfig.log(
-        LocationConfig.mapScreenTag,
-        '✅ 投稿作成成功: $text',
-      );
+
+      LocationConfig.log(LocationConfig.mapScreenTag, '✅ 投稿作成成功: $text');
     } catch (e) {
       LocationConfig.log(LocationConfig.mapScreenTag, '❌ 投稿作成エラー: $e');
       rethrow; // エラーをUI層に伝播
@@ -167,35 +160,39 @@ class _MapScreenState extends State<MapScreen> {
     showDialog(
       context: context,
       builder: (context) => CreatePostDialog(
-        onPostCreate: (String text, PostKind kind) async {
-          await _createPostAtCurrentLocation(text, kind);
+        onPostCreate: (String text) async {
+          await _createPostAtCurrentLocation(text);
         },
       ),
     );
   }
 
   /// 現在地に投稿を作成
-  Future<void> _createPostAtCurrentLocation(String text, PostKind kind) async {
+  Future<void> _createPostAtCurrentLocation(String text) async {
     // 現在地または開発ツールの仮想位置を使用
     final location = _shouldShowDevTools ? _virtualLocation : _currentLocation;
-    
+
     if (location == null) {
       // 位置情報が取得できない場合はデフォルト位置（横浜駅）を使用
       await createPostAtLocation(
         lat: LocationConfig.defaultLocation.latitude,
         lng: LocationConfig.defaultLocation.longitude,
         text: text,
-        kind: kind,
       );
-      LocationConfig.log(LocationConfig.mapScreenTag, '⚠️ 位置情報未取得のためデフォルト位置に投稿');
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        '⚠️ 位置情報未取得のためデフォルト位置に投稿',
+      );
     } else {
       await createPostAtLocation(
         lat: location.latitude,
         lng: location.longitude,
         text: text,
-        kind: kind,
       );
-      LocationConfig.log(LocationConfig.mapScreenTag, '💬 投稿作成: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}');
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        '💬 投稿作成: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}',
+      );
     }
   }
 
@@ -215,22 +212,28 @@ class _MapScreenState extends State<MapScreen> {
         east: camera.visibleBounds.east,
         west: camera.visibleBounds.west,
       );
-      
-      LocationConfig.log(LocationConfig.mapScreenTag, '📍 画面範囲: N${bounds.north.toStringAsFixed(4)}, S${bounds.south.toStringAsFixed(4)}, E${bounds.east.toStringAsFixed(4)}, W${bounds.west.toStringAsFixed(4)}');
+
+      // LocationConfig.log(LocationConfig.mapScreenTag, '📍 画面範囲: N${bounds.north.toStringAsFixed(4)}, S${bounds.south.toStringAsFixed(4)}, E${bounds.east.toStringAsFixed(4)}, W${bounds.west.toStringAsFixed(4)}');
 
       final bubblePositions = _bubbleManager.layoutBubbles(
         _posts,
         bounds,
         'current_user', // TODO: 実際のユーザーIDを使用
       );
-      
-      LocationConfig.log(LocationConfig.mapScreenTag, '💬 表示する吹き出し: ${bubblePositions.length}件');
+
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        '💬 表示する吹き出し: ${bubblePositions.length}件',
+      );
 
       setState(() {
         _bubblePositions = bubblePositions;
       });
     } catch (e) {
-      LocationConfig.log(LocationConfig.mapScreenTag, '⚠️ MapController未準備: $e');
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        '⚠️ MapController未準備: $e',
+      );
     }
   }
 
@@ -297,10 +300,10 @@ class _MapScreenState extends State<MapScreen> {
     await _liveLocationController.startTracking(
       onLocationUpdate: (LatLng location) {
         // 現在座標を常にログに出力
-        LocationConfig.log(
-          LocationConfig.mapScreenTag,
-          '📍 現在位置: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}',
-        );
+        // LocationConfig.log(
+        //   LocationConfig.mapScreenTag,
+        //   '📍 現在位置: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}',
+        // );
 
         setState(() {
           _currentLocation = location;
@@ -327,17 +330,17 @@ class _MapScreenState extends State<MapScreen> {
     LatLng? targetLocation;
     if (_shouldShowDevTools) {
       targetLocation = _virtualLocation;
-      LocationConfig.log(
-        LocationConfig.mapScreenTag,
-        '🎯 仮想位置に移動: lat=${_virtualLocation.latitude.toStringAsFixed(6)}, lng=${_virtualLocation.longitude.toStringAsFixed(6)}',
-      );
+      // LocationConfig.log(
+      //   LocationConfig.mapScreenTag,
+      //   '🎯 仮想位置に移動: lat=${_virtualLocation.latitude.toStringAsFixed(6)}, lng=${_virtualLocation.longitude.toStringAsFixed(6)}',
+      // );
     } else {
       targetLocation = _currentLocation;
       if (targetLocation != null) {
-        LocationConfig.log(
-          LocationConfig.mapScreenTag,
-          '📍 現在地に移動: lat=${targetLocation.latitude.toStringAsFixed(6)}, lng=${targetLocation.longitude.toStringAsFixed(6)}',
-        );
+        // LocationConfig.log(
+        //   LocationConfig.mapScreenTag,
+        //   '📍 現在地に移動: lat=${targetLocation.latitude.toStringAsFixed(6)}, lng=${targetLocation.longitude.toStringAsFixed(6)}',
+        // );
       }
     }
 
@@ -398,10 +401,10 @@ class _MapScreenState extends State<MapScreen> {
     // ジョイスティック操作時は地図中心を現在地に追従
     _mapController.move(newLocation, _mapController.camera.zoom);
 
-    LocationConfig.log(
-      LocationConfig.mapScreenTag,
-      '🎮 ジョイスティック: 仮想位置更新・地図中心移動 lat=${newLocation.latitude.toStringAsFixed(6)}, lng=${newLocation.longitude.toStringAsFixed(6)}',
-    );
+    // LocationConfig.log(
+    //   LocationConfig.mapScreenTag,
+    //   '🎮 ジョイスティック: 仮想位置更新・地図中心移動 lat=${newLocation.latitude.toStringAsFixed(6)}, lng=${newLocation.longitude.toStringAsFixed(6)}',
+    // );
   }
 
   /// 開発ツールが表示されるべきかチェック
@@ -516,25 +519,6 @@ class _MapScreenState extends State<MapScreen> {
             ],
           ),
 
-          // ステータス表示（上部）
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 16,
-            right: 16,
-            child: Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _locationStatus,
-                style: TextStyle(color: Colors.white, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-
           // 開発ツール: ジョイスティック（左下）
           if (_shouldShowDevTools)
             Positioned(
@@ -584,9 +568,9 @@ class _MapScreenState extends State<MapScreen> {
             foregroundColor: Colors.blue,
             child: FaIcon(FontAwesomeIcons.compass, size: 24),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // 投稿作成ボタン
           FloatingActionButton(
             heroTag: "create_post",

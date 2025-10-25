@@ -30,13 +30,12 @@ class PostService {
     required double lat,
     required double lng,
     required String text,
-    required PostKind kind,
     String? userId,
   }) async {
     if (_useApi) {
-      return _createPostApi(lat: lat, lng: lng, text: text, kind: kind, userId: userId);
+      return _createPostApi(lat: lat, lng: lng, text: text, userId: userId);
     } else {
-      return _createPostMock(lat: lat, lng: lng, text: text, kind: kind, userId: userId);
+      return _createPostMock(lat: lat, lng: lng, text: text, userId: userId);
     }
   }
 
@@ -66,7 +65,6 @@ class PostService {
     required double lat,
     required double lng,
     required String text,
-    required PostKind kind,
     String? userId,
   }) async {
     // API遅延をシミュレート
@@ -76,7 +74,7 @@ class PostService {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       lat: lat,
       lng: lng,
-      kind: kind,
+      kind: PostKind.user,
       text: text,
       createdAt: DateTime.now(),
       userId: userId,
@@ -100,21 +98,18 @@ class PostService {
       lat: 35.4658,
       lng: 139.6201,
       text: 'こんにちは！横浜駅です',
-      kind: PostKind.user,
     );
     
     await _createPostMock(
       lat: 35.4660,
       lng: 139.6205,
       text: 'この場所は人が多いですね',
-      kind: PostKind.land,
     );
     
     await _createPostMock(
       lat: 35.4665,
       lng: 139.6210,
       text: '良い天気です！',
-      kind: PostKind.user,
     );
   }
 
@@ -126,7 +121,6 @@ class PostService {
     required double lat,
     required double lng,
     required String text,
-    required PostKind kind,
     String? userId,
   }) async {
     final uri = Uri.parse('$_baseUrl/posts');
@@ -135,7 +129,7 @@ class PostService {
       'lat': lat,
       'lng': lng,
       'content': text,
-      'kind': kind == PostKind.user ? 'user' : 'land',
+      'kind': 'user',
       if (userId != null) 'user_id': userId,
     };
 

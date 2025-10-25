@@ -71,7 +71,10 @@ class LiveLocationController with WidgetsBindingObserver {
       return;
     }
 
-    LocationConfig.log(_logTag, '✅ 権限確認完了: ${LocationConfig.permissionToString(permission)}');
+    LocationConfig.log(
+      _logTag,
+      '✅ 権限確認完了: ${LocationConfig.permissionToString(permission)}',
+    );
 
     // 2) まずは最後の既知位置を即座に反映（あれば）
     try {
@@ -128,23 +131,26 @@ class LiveLocationController with WidgetsBindingObserver {
   /// 仮想位置ストリームを開始
   void _startVirtualLocationStream() {
     _virtualPositionSubscription?.cancel();
-    _virtualPositionSubscription = Stream.periodic(
-      const Duration(seconds: 1),
-      (_) => _devLocationService.getVirtualLocation() ?? LocationConfig.defaultLocation,
-    ).listen(
-      (location) {
-        LocationConfig.log(
-          _logTag,
-          '🎯 仮想位置更新: lat=${location.latitude.toStringAsFixed(6)}, '
-          'lng=${location.longitude.toStringAsFixed(6)}',
+    _virtualPositionSubscription =
+        Stream.periodic(
+          const Duration(seconds: 1),
+          (_) =>
+              _devLocationService.getVirtualLocation() ??
+              LocationConfig.defaultLocation,
+        ).listen(
+          (location) {
+            // LocationConfig.log(
+            //   _logTag,
+            //   '🎯 仮想位置更新: lat=${location.latitude.toStringAsFixed(6)}, '
+            //   'lng=${location.longitude.toStringAsFixed(6)}',
+            // );
+            _onLocationUpdate?.call(location);
+          },
+          onError: (error) {
+            LocationConfig.log(_logTag, '❌ 仮想位置ストリームエラー: $error');
+            _onError?.call(error);
+          },
         );
-        _onLocationUpdate?.call(location);
-      },
-      onError: (error) {
-        LocationConfig.log(_logTag, '❌ 仮想位置ストリームエラー: $error');
-        _onError?.call(error);
-      },
-    );
   }
 
   /// 常時位置情報取得を停止

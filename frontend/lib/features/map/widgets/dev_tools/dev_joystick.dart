@@ -3,7 +3,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../../core/constants/location_config.dart';
 
 /// 開発用ジョイスティック
-/// 
+///
 /// 仮想位置操作のためのUI部品
 /// - 円形ドラッグエリア（直径100dp）
 /// - 中央ノブ操作でOffset値を計算
@@ -12,10 +12,10 @@ import '../../../../core/constants/location_config.dart';
 class DevJoystick extends StatefulWidget {
   /// ジョイスティック操作時のコールバック
   final Function(LatLng newLocation) onLocationChange;
-  
+
   /// 現在の仮想位置
   final LatLng currentLocation;
-  
+
   const DevJoystick({
     super.key,
     required this.onLocationChange,
@@ -31,7 +31,7 @@ class _DevJoystickState extends State<DevJoystick> {
   static const double _joystickSize = 100.0;
   static const double _knobSize = 40.0;
   static const double _maxDragDistance = (_joystickSize - _knobSize) / 2;
-  static const double _movementSensitivity = 0.0003; // 移動感度調整
+  static const double _movementSensitivity = 0.0001; // 移動感度調整
 
   Offset _knobOffset = Offset.zero;
   bool _isDragging = false;
@@ -99,23 +99,23 @@ class _DevJoystickState extends State<DevJoystick> {
     setState(() {
       _isDragging = true;
     });
-    LocationConfig.log(_logTag, '🎮 ジョイスティック操作開始');
+    // LocationConfig.log(_logTag, '🎮 ジョイスティック操作開始');
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
     final center = Offset(_joystickSize / 2, _joystickSize / 2);
     final localPosition = renderBox.globalToLocal(details.globalPosition);
-    
+
     // 中心からの相対位置を計算
     final offset = localPosition - center;
-    
+
     // 最大ドラッグ距離で制限
     final distance = offset.distance;
     final clampedOffset = distance <= _maxDragDistance
         ? offset
         : Offset.fromDirection(offset.direction, _maxDragDistance);
-    
+
     setState(() {
       _knobOffset = clampedOffset;
     });
@@ -129,7 +129,7 @@ class _DevJoystickState extends State<DevJoystick> {
       _knobOffset = Offset.zero;
       _isDragging = false;
     });
-    LocationConfig.log(_logTag, '🎮 ジョイスティック操作終了');
+    // LocationConfig.log(_logTag, '🎮 ジョイスティック操作終了');
   }
 
   /// ジョイスティックオフセットを地図座標変換
@@ -137,12 +137,12 @@ class _DevJoystickState extends State<DevJoystick> {
     // 正規化されたオフセット（-1.0 〜 1.0の範囲）
     final normalizedX = offset.dx / _maxDragDistance;
     final normalizedY = offset.dy / _maxDragDistance;
-    
+
     // 緯度・経度の変更量を計算
     // X軸: 東西方向（経度）、Y軸: 南北方向（緯度、反転）
     final deltaLng = normalizedX * _movementSensitivity;
     final deltaLat = -normalizedY * _movementSensitivity; // Y軸反転（上=北）
-    
+
     // 新しい仮想位置を計算
     final newLocation = LatLng(
       widget.currentLocation.latitude + deltaLat,
@@ -150,10 +150,10 @@ class _DevJoystickState extends State<DevJoystick> {
     );
 
     LocationConfig.log(
-      _logTag, 
+      _logTag,
       '📍 仮想位置更新: lat=${newLocation.latitude.toStringAsFixed(6)}, '
       'lng=${newLocation.longitude.toStringAsFixed(6)} '
-      '(delta: ${deltaLat.toStringAsFixed(8)}, ${deltaLng.toStringAsFixed(8)})'
+      '(delta: ${deltaLat.toStringAsFixed(8)}, ${deltaLng.toStringAsFixed(8)})',
     );
 
     // コールバックで位置を通知

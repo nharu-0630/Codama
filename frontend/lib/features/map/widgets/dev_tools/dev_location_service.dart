@@ -4,7 +4,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../../core/constants/location_config.dart';
 
 /// 開発用仮想位置管理サービス
-/// 
+///
 /// 開発時のGPS代替機能
 /// - 静的仮想位置保存
 /// - DEV_TOOLS環境変数による制御
@@ -12,7 +12,7 @@ import '../../../../core/constants/location_config.dart';
 /// - LocationServiceとの統合
 class DevLocationService {
   static const String _logTag = '[DevLocationService]';
-  
+
   /// シングルトンインスタンス
   static final DevLocationService _instance = DevLocationService._internal();
   factory DevLocationService() => _instance;
@@ -25,7 +25,7 @@ class DevLocationService {
   static bool get isDevToolsEnabled {
     // デバッグモードかつDEV_TOOLS=trueの場合のみ有効
     if (!kDebugMode) return false;
-    
+
     final devToolsValue = dotenv.env['DEV_TOOLS']?.toLowerCase();
     return devToolsValue == 'true';
   }
@@ -38,11 +38,11 @@ class DevLocationService {
     }
 
     _virtualLocation = location;
-    LocationConfig.log(
-      _logTag, 
-      '🎯 仮想位置設定: lat=${location.latitude.toStringAsFixed(6)}, '
-      'lng=${location.longitude.toStringAsFixed(6)}'
-    );
+    // LocationConfig.log(
+    //   _logTag,
+    //   '🎯 仮想位置設定: lat=${location.latitude.toStringAsFixed(6)}, '
+    //   'lng=${location.longitude.toStringAsFixed(6)}'
+    // );
   }
 
   /// 仮想位置を取得
@@ -53,9 +53,9 @@ class DevLocationService {
 
     if (_virtualLocation != null) {
       LocationConfig.log(
-        _logTag, 
+        _logTag,
         '📍 仮想位置取得: lat=${_virtualLocation!.latitude.toStringAsFixed(6)}, '
-        'lng=${_virtualLocation!.longitude.toStringAsFixed(6)}'
+        'lng=${_virtualLocation!.longitude.toStringAsFixed(6)}',
       );
     }
 
@@ -86,10 +86,10 @@ class DevLocationService {
 
     if (_virtualLocation != null) {
       LocationConfig.log(
-        _logTag, 
+        _logTag,
         '📊 開発ツール状態: 仮想位置 '
         'lat=${_virtualLocation!.latitude.toStringAsFixed(6)}, '
-        'lng=${_virtualLocation!.longitude.toStringAsFixed(6)}'
+        'lng=${_virtualLocation!.longitude.toStringAsFixed(6)}',
       );
     } else {
       LocationConfig.log(_logTag, '📊 開発ツール状態: 仮想位置未設定（GPS使用）');
@@ -116,7 +116,7 @@ class DevLocationService {
       _virtualLocation!.latitude + deltaLat,
       _virtualLocation!.longitude + deltaLng,
     );
-    
+
     setVirtualLocation(newLocation);
   }
 }
