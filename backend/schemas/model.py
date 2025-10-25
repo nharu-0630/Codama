@@ -14,11 +14,15 @@ class PromptBase(BaseModel):
     created_at: datetime
 
 
-class LLMPost(BaseModel):
+class BasePost(BaseModel):
     uuid: UUID
     content: str
     location: tuple[float, float]
     created_at: datetime
+
+
+class LLMPost(BasePost):
+    pass
 
 
 class Cell(BaseModel):
@@ -27,13 +31,8 @@ class Cell(BaseModel):
     location: tuple[float, float]
 
 
-class UserPost(BaseModel):
-    uuid: UUID
-    content: str
-    location: tuple[float, float]
-    cell: Cell
+class UserPost(BasePost):
     llm_post: Optional[LLMPost]
-    created_at: datetime
 
 
 class Area(BaseModel):

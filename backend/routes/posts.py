@@ -4,9 +4,8 @@ import asyncio
 import threading
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
-
 from config.database import supabase
+from fastapi import APIRouter, Depends, HTTPException
 from schemas.model import (
     Cell,
     CreatePostRequest,
@@ -17,7 +16,13 @@ from schemas.model import (
 )
 from utils.auth import get_current_user
 from utils.coordinates import add_random_offset
-from utils.geohash import decode_wkt_location, encode_location, encode_wkt_location
+from utils.geohash import (
+    decode_wkt_location,
+    encode_location,
+    encode_wkt_location,
+    get_or_create_cell,
+)
+from utils.post_embedding import generate_embedding
 from utils.post_llm import generate_post
 
 router = APIRouter(prefix="/posts", tags=["posts"])
@@ -42,11 +47,6 @@ async def get_posts(lat: float, lon: float):
                 content=post["content"],  # type: ignore
                 location=decode_wkt_location(str(post["location"])),  # type: ignore
                 created_at=post["created_at"],  # type: ignore
-                cell=Cell(
-                    id=post["cells"]["id"],  # type: ignore
-                    geo_hash=post["cells"]["geo_hash"],  # type: ignore
-                    location=decode_wkt_location(str(post["cells"]["location"])),  # type: ignore
-                ),
                 llm_post=LLMPost(
                     uuid=post["llm_posts"]["uuid"],  # type: ignore
                     content=post["llm_posts"]["content"],  # type: ignore
@@ -67,16 +67,11 @@ async def create_post(
     user=Depends(get_current_user),  # type: ignore
 ):
     """Create a new post."""
-    geo_hash = encode_location(request.lat, request.lon)
-    cell_response = (
-        supabase.from_("cells").select("*").like("geo_hash", f"{geo_hash}%").execute()
-    )
-    if not cell_response.data:
-        raise HTTPException(status_code=404, detail="Cell not found")
+    cell_data = get_or_create_cell(request.lat, request.lon)
 
-    area_id = int(cell_response.data[0]["area_id"])  # type: ignore
+    area_id = int(cell_data["area_id"])  # type: ignore
     location = add_random_offset(request.lat, request.lon)
-    cell_id = int(cell_response.data[0]["id"])  # type: ignore
+    cell_id = int(cell_data["id"])  # type: ignore
     new_post: dict[str, Any] = {
         "content": request.content,
         "cell_id": cell_id,
@@ -100,6 +95,24 @@ async def create_post(
         supabase.from_("llm_posts").insert(llm_post).execute()
 
     threading.Thread(target=lambda: asyncio.run(create_llm_post())).start()
+
+    embedding = await generate_embedding(request.content)
+    embedding_record: dict[str, Any] = {
+        "user_post_uuid": created_post.data[0]["uuid"],  # type: ignore
+        "embedding": embedding,
+    }
+
+    similar_posts = supabase.rpc(
+        "find_similar_posts", {"query_embedding": embedding, "match_count": 5}
+    ).execute()
+    similar_post_uuids = [  # type: ignore
+        record["user_post_uuid"]
+        for record in similar_posts.data  # type: ignore
+    ]
+
+    print(f"Similar posts found: {similar_post_uuids}")
+
+    supabase.from_("post_embeddings").insert(embedding_record).execute()
 
     return CreatePostResponse(
         success=True,
