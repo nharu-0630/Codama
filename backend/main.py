@@ -2,7 +2,8 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import areas, auth, current, health, posts
+
+from routes import areas, auth, batch, current, health, posts
 
 
 def create_app() -> FastAPI:
@@ -24,6 +25,7 @@ def create_app() -> FastAPI:
     app.include_router(areas.router)
     app.include_router(current.router)
     app.include_router(posts.router)
+    app.include_router(batch.router)
 
     return app
 

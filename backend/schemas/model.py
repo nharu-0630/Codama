@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -14,7 +15,7 @@ class PromptBase(BaseModel):
 
 
 class LLMPost(BaseModel):
-    id: int
+    uuid: UUID
     content: str
     location: tuple[float, float]
     created_at: datetime
@@ -27,7 +28,7 @@ class Cell(BaseModel):
 
 
 class UserPost(BaseModel):
-    id: int
+    uuid: UUID
     content: str
     location: tuple[float, float]
     cell: Cell
@@ -64,3 +65,7 @@ class SignupResponse(BaseModel):
     access_token: str
     refresh_token: str
     user_id: str
+
+
+class UpdatePromptResponse(BaseModel):
+    success: bool
