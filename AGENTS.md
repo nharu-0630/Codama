@@ -2,13 +2,24 @@
 
 ## 概要
 
-地図を主眼に置いたSNSです。
+Codama は、空間を主眼に置いた SNS です。
 
+## 要件
+
+- iOS 向け Flutter モバイルアプリケーション
+- 投稿が地理的位置に紐づくソーシャルネットワーキングシステム
+- 特定の地理的エリアでの会話から学習し、文脈的な応答を提供する AI システム
+- 地図は Flutter map と https://maps.stamen.com/watercolor を利用
+- 今開発では、特に横浜市に主眼を置く
+- 横浜市の 18 区 1 つずつを、1 つの LLM が担当する。
+- 地図上に投稿がランダムにポップする
+- 投稿をすると、LLM の返信や関連するユーザー投稿がポップする
+- AI のフィードバックループを回す。
 
 ## 技術スタック
 
 - フロントエンド：Flutter
-- バックエンド：Python（FastAPI） wit uv + Supabase
+- バックエンド：Python（FastAPI） with uv + Supabase
 
 ## API
 
