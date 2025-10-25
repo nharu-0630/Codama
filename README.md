@@ -12,3 +12,10 @@ supabase start
 cd backend
 uv sync
 ```
+
+## Frontend
+
+```bash
+cd frontend
+flutter pub get
+```
