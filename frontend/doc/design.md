@@ -665,4 +665,187 @@ lib/
         └── services/              # 認証・匿名ID管理
 ```
 
+## 開発者ツール（デバッグ機能）
+
+### 概要
+
+開発効率向上のため、`.env`ファイルで制御可能な開発者専用ツールを提供します。本番環境では完全に無効化され、パフォーマンスやセキュリティに影響しません。
+
+### 環境変数制御
+
+#### .env設定
+```bash
+# 開発環境
+DEV_TOOLS=true
+
+# 本番環境
+DEV_TOOLS=false
+```
+
+#### main.dartでの環境変数読み込み
+```dart
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  runApp(const KodamaMapApp());
+}
+```
+
+### ジョイスティックコントロール
+
+#### DevJoystickウィジェット仕様
+```dart
+class DevJoystick extends StatefulWidget {
+  final Function(Offset offset) onChanged;
+  final double size;
+  final Color backgroundColor;
+  final Color knobColor;
+  
+  const DevJoystick({
+    super.key,
+    required this.onChanged,
+    this.size = 100,
+    this.backgroundColor = const Color(0x88000000),
+    this.knobColor = Colors.white,
+  });
+}
+```
+
+#### 機能仕様
+1. **表示制御**: `DEV_TOOLS=true`時のみ表示
+2. **操作範囲**: 円形領域内でのドラッグ操作
+3. **座標変換**: ジョイスティック入力を地図座標オフセットに変換
+4. **センタリング**: 操作終了時に中央に戻る
+5. **視覚フィードバック**: 操作中のノブ位置表示
+
+#### 地図連携
+```dart
+// MapScreen内での使用例
+if (dotenv.env['DEV_TOOLS']?.toLowerCase() == 'true')
+  Positioned(
+    left: 16,
+    bottom: 24,
+    child: DevJoystick(
+      onChanged: (offset) {
+        final center = _mapController.camera.center;
+        final newCenter = LatLng(
+          center.latitude - offset.dy * 0.0003,
+          center.longitude + offset.dx * 0.0003,
+        );
+        _mapController.move(newCenter, _mapController.camera.zoom);
+      },
+    ),
+  ),
+```
+
+### 仮想位置システム
+
+#### DevLocationService
+```dart
+class DevLocationService {
+  static LatLng? _virtualLocation;
+  static bool get isDevMode => dotenv.env['DEV_TOOLS']?.toLowerCase() == 'true';
+  
+  // 仮想位置の設定
+  static void setVirtualLocation(LatLng location) {
+    if (isDevMode) {
+      _virtualLocation = location;
+    }
+  }
+  
+  // 位置取得（開発モード時は仮想位置を返す）
+  static Future<LatLng> getCurrentLocation() async {
+    if (isDevMode && _virtualLocation != null) {
+      return _virtualLocation!;
+    }
+    // 通常の位置取得処理
+    return LocationService().getCurrentLocation();
+  }
+}
+```
+
+### セキュリティ考慮事項
+
+#### ビルド時の除外
+```dart
+// 本番ビルド用の条件分岐
+Widget build(BuildContext context) {
+  final devMode = kDebugMode && 
+    dotenv.env['DEV_TOOLS']?.toLowerCase() == 'true';
+  
+  return Scaffold(
+    body: Stack(
+      children: [
+        // 地図表示
+        _buildMap(),
+        // 開発ツール（デバッグモードかつDEV_TOOLS=trueの場合のみ）
+        if (devMode) _buildDevTools(),
+      ],
+    ),
+  );
+}
+```
+
+#### .gitignore設定
+```bash
+# 本番用環境ファイルは除外
+.env.production
+.env.staging
+```
+
+### パフォーマンス最適化
+
+1. **遅延初期化**: 開発ツールの初期化は必要時のみ
+2. **条件分岐**: リリースビルドでは完全に除外
+3. **メモリ効率**: 開発ツール無効時はインスタンス生成なし
+
+### 拡張可能性
+
+将来的な開発ツール機能拡張のための設計：
+
+```dart
+class DevToolsPanel extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.black87,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ジョイスティック
+          DevJoystick(onChanged: _onLocationChange),
+          SizedBox(height: 16),
+          // 将来の機能拡張エリア
+          // - ズームレベル制御
+          // - 投稿データモック
+          // - API応答シミュレーション
+        ],
+      ),
+    );
+  }
+}
+```
+
+### ディレクトリ構造更新
+```
+lib/
+├── features/
+│   ├── map/
+│   │   ├── widgets/
+│   │   │   ├── map_attribution.dart
+│   │   │   ├── bubble_widget.dart
+│   │   │   └── dev_tools/          # 開発ツール専用
+│   │   │       ├── dev_joystick.dart
+│   │   │       ├── dev_tools_panel.dart
+│   │   │       └── dev_location_service.dart
+```
+
+この設計により、開発効率の向上と本番環境での安全性を両立した開発者ツールシステムを実現します。
+
+---
+
 この設計書は、要件定義で定義された全ての機能要件を技術的に実現するための詳細な設計を提供しています。Flutter/DartエコシステムとStadiaMapsを活用し、スケーラブルで保守性の高いアーキテクチャを採用しています。
