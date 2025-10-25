@@ -10,14 +10,19 @@ import '../../location/services/live_location_controller.dart';
 import '../../../core/constants/location_config.dart';
 import '../widgets/dev_tools/dev_joystick.dart';
 import '../widgets/dev_tools/dev_location_service.dart';
-
+import '../../post/models/post.dart';
+import '../../post/models/bubble_position.dart';
+import '../../post/services/bubble_manager.dart';
+import '../../post/services/simple_post_service.dart';
+import '../../post/widgets/bubble_widget.dart';
 
 // 水彩画風　stamen_watercolor
-// const _styleUrl ="https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg";
+const _styleUrl =
+    "https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg";
 
 // スタイリング無し版
-const _styleUrl =
-    "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
+// const _styleUrl =
+//     "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -29,25 +34,40 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   late MapController _mapController;
   final LocationService _locationService = LocationService();
-  final LiveLocationController _liveLocationController = LiveLocationController();
+  final LiveLocationController _liveLocationController =
+      LiveLocationController();
   LatLng? _currentLocation;
   String _locationStatus = '位置情報未取得';
   double? _lastZoomLevel;
-  
+
   // 開発ツール関連
   LatLng _virtualLocation = LocationConfig.defaultLocation;
+
+  // 吹き出し関連
+  final BubbleManager _bubbleManager = BubbleManager();
+  final SimplePostService _simplePostService = SimplePostService();
+  List<Post> _posts = [];
+  List<BubblePosition> _bubblePositions = [];
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
     LocationConfig.log(LocationConfig.mapScreenTag, '🗺️ MapScreen初期化開始');
-    
+
     // 開発ツール初期化
     _initializeDevTools();
-    
+
     _checkInitialLocation();
     _startLocationTracking();
+    
+    // デモ用投稿を追加
+    _simplePostService.addDemoPosts();
+    // 初期化時は_updatePostsを呼ばない（MapControllerがまだ準備できていないため）
+    // 代わりにWidgetsBinding.instance.addPostFrameCallbackで実行
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updatePosts();
+    });
   }
 
   @override
@@ -58,10 +78,113 @@ class _MapScreenState extends State<MapScreen> {
 
   void _onPositionChanged(MapCamera position, bool hasGesture) {
     // ズームレベルが1単位以上変化したときのみログ出力
-    if (_lastZoomLevel == null || (position.zoom - _lastZoomLevel!).abs() >= 1.0) {
-      LocationConfig.log(LocationConfig.mapScreenTag, 'ズームレベル変更: ${_lastZoomLevel?.toStringAsFixed(1) ?? "初期"} → ${position.zoom.toStringAsFixed(1)}');
+    if (_lastZoomLevel == null ||
+        (position.zoom - _lastZoomLevel!).abs() >= 1.0) {
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        'ズームレベル変更: ${_lastZoomLevel?.toStringAsFixed(1) ?? "初期"} → ${position.zoom.toStringAsFixed(1)}',
+      );
       _lastZoomLevel = position.zoom;
     }
+
+    // 地図移動時に吹き出し位置を更新
+    _updateBubblePositions();
+  }
+
+  /// 投稿を更新
+  void _updatePosts() {
+    setState(() {
+      _posts = _simplePostService.getAllPosts();
+    });
+    _updateBubblePositions();
+    LocationConfig.log(
+      LocationConfig.mapScreenTag,
+      '💬 投稿データを更新しました: ${_posts.length}件',
+    );
+  }
+
+  /// 特定座標に投稿を追加
+  void addPostAtLocation({
+    required double lat,
+    required double lng,
+    required String text,
+    PostKind kind = PostKind.user,
+  }) {
+    _simplePostService.addPost(
+      lat: lat,
+      lng: lng,
+      text: text,
+      kind: kind,
+    );
+    _updatePosts();
+  }
+
+  /// 吹き出し位置を更新
+  void _updateBubblePositions() {
+    if (_posts.isEmpty) {
+      LocationConfig.log(LocationConfig.mapScreenTag, '⚠️ 投稿が空です');
+      return;
+    }
+
+    // MapControllerが準備できているか確認
+    try {
+      final camera = _mapController.camera;
+      final bounds = ViewBounds(
+        north: camera.visibleBounds.north,
+        south: camera.visibleBounds.south,
+        east: camera.visibleBounds.east,
+        west: camera.visibleBounds.west,
+      );
+      
+      LocationConfig.log(LocationConfig.mapScreenTag, '📍 画面範囲: N${bounds.north.toStringAsFixed(4)}, S${bounds.south.toStringAsFixed(4)}, E${bounds.east.toStringAsFixed(4)}, W${bounds.west.toStringAsFixed(4)}');
+
+      final bubblePositions = _bubbleManager.layoutBubbles(
+        _posts,
+        bounds,
+        'current_user', // TODO: 実際のユーザーIDを使用
+      );
+      
+      LocationConfig.log(LocationConfig.mapScreenTag, '💬 表示する吹き出し: ${bubblePositions.length}件');
+
+      setState(() {
+        _bubblePositions = bubblePositions;
+      });
+    } catch (e) {
+      LocationConfig.log(LocationConfig.mapScreenTag, '⚠️ MapController未準備: $e');
+    }
+  }
+
+  /// 吹き出しタップ時の処理
+  void _onBubbleTap(Post post) {
+    _showPostDetail(post);
+  }
+
+  /// 投稿詳細を表示
+  void _showPostDetail(Post post) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(post.kind == PostKind.user ? 'ユーザー投稿' : '土地の記憶'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(post.text),
+            const SizedBox(height: 8),
+            Text(
+              '投稿時刻: ${post.createdAt.toString().substring(0, 19)}',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// 初期位置情報チェック
@@ -77,13 +200,16 @@ class _MapScreenState extends State<MapScreen> {
           'サービス: ${serviceEnabled ? "有効" : "無効"}';
     });
 
-    LocationConfig.log(LocationConfig.mapScreenTag, '📊 初期状態: $_locationStatus');
+    LocationConfig.log(
+      LocationConfig.mapScreenTag,
+      '📊 初期状態: $_locationStatus',
+    );
   }
 
   /// 画面開始時に自動で位置情報追跡を開始
   Future<void> _startLocationTracking() async {
     LocationConfig.log(LocationConfig.mapScreenTag, '🚀 自動で常時追跡を開始します');
-    
+
     setState(() {
       _locationStatus = '位置情報追跡開始中...';
     });
@@ -91,13 +217,16 @@ class _MapScreenState extends State<MapScreen> {
     await _liveLocationController.startTracking(
       onLocationUpdate: (LatLng location) {
         // 現在座標を常にログに出力
-        LocationConfig.log(LocationConfig.mapScreenTag, '📍 現在位置: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}');
-        
+        LocationConfig.log(
+          LocationConfig.mapScreenTag,
+          '📍 現在位置: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}',
+        );
+
         setState(() {
           _currentLocation = location;
           _locationStatus = '位置情報追跡中';
         });
-        
+
         // 地図の中心は自動移動しない（ユーザーが自由に地図を操作できるように）
         // コンパスボタンで現在地に戻ることができる
       },
@@ -110,35 +239,46 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-
   /// コンパスボタンが押されたときの処理（現在地に移動 + 北向き）
   void _centerOnCurrentLocation() {
     LocationConfig.log(LocationConfig.mapScreenTag, '🧭 コンパスボタンが押されました');
-    
+
     // 開発ツールが有効な場合は仮想位置を使用、そうでなければ実際の現在地を使用
     LatLng? targetLocation;
     if (_shouldShowDevTools) {
       targetLocation = _virtualLocation;
-      LocationConfig.log(LocationConfig.mapScreenTag, '🎯 仮想位置に移動: lat=${_virtualLocation.latitude.toStringAsFixed(6)}, lng=${_virtualLocation.longitude.toStringAsFixed(6)}');
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        '🎯 仮想位置に移動: lat=${_virtualLocation.latitude.toStringAsFixed(6)}, lng=${_virtualLocation.longitude.toStringAsFixed(6)}',
+      );
     } else {
       targetLocation = _currentLocation;
       if (targetLocation != null) {
-        LocationConfig.log(LocationConfig.mapScreenTag, '📍 現在地に移動: lat=${targetLocation.latitude.toStringAsFixed(6)}, lng=${targetLocation.longitude.toStringAsFixed(6)}');
+        LocationConfig.log(
+          LocationConfig.mapScreenTag,
+          '📍 現在地に移動: lat=${targetLocation.latitude.toStringAsFixed(6)}, lng=${targetLocation.longitude.toStringAsFixed(6)}',
+        );
       }
     }
-    
+
     if (targetLocation != null) {
       // 現在地に移動してズームレベルを適切に設定
       _mapController.move(targetLocation, LocationConfig.compassZoom);
-      
+
       // 地図の回転を北向き（0度）にリセット
       _mapController.rotate(0);
-      
-      LocationConfig.log(LocationConfig.mapScreenTag, '🧭 地図を現在地に移動し、北向きに調整しました');
+
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        '🧭 地図を現在地に移動し、北向きに調整しました',
+      );
     } else {
       LocationConfig.log(LocationConfig.mapScreenTag, '⚠️ 現在地が取得されていません');
       // 現在地が不明な場合はデフォルト位置（横浜駅）に移動
-      _mapController.move(LocationConfig.defaultLocation, LocationConfig.defaultZoom);
+      _mapController.move(
+        LocationConfig.defaultLocation,
+        LocationConfig.defaultZoom,
+      );
       _mapController.rotate(0);
     }
   }
@@ -147,17 +287,20 @@ class _MapScreenState extends State<MapScreen> {
   void _initializeDevTools() {
     if (DevLocationService.isDevToolsEnabled) {
       LocationConfig.log(LocationConfig.mapScreenTag, '🛠️ 開発ツールを初期化しています');
-      
+
       // デフォルト仮想位置を設定
       _locationService.setVirtualLocation(_virtualLocation);
-      
+
       // 仮想位置を現在位置として設定
       setState(() {
         _currentLocation = _virtualLocation;
       });
-      
+
       _locationService.logDevToolsState();
-      LocationConfig.log(LocationConfig.mapScreenTag, '🎯 現在位置を仮想位置で初期化: lat=${_virtualLocation.latitude.toStringAsFixed(6)}, lng=${_virtualLocation.longitude.toStringAsFixed(6)}');
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        '🎯 現在位置を仮想位置で初期化: lat=${_virtualLocation.latitude.toStringAsFixed(6)}, lng=${_virtualLocation.longitude.toStringAsFixed(6)}',
+      );
     }
   }
 
@@ -168,16 +311,16 @@ class _MapScreenState extends State<MapScreen> {
       // 仮想位置を現在位置として設定
       _currentLocation = newLocation;
     });
-    
+
     // LocationServiceに仮想位置を設定
     _locationService.setVirtualLocation(newLocation);
-    
+
     // ジョイスティック操作時は地図中心を現在地に追従
     _mapController.move(newLocation, _mapController.camera.zoom);
-    
+
     LocationConfig.log(
-      LocationConfig.mapScreenTag, 
-      '🎮 ジョイスティック: 仮想位置更新・地図中心移動 lat=${newLocation.latitude.toStringAsFixed(6)}, lng=${newLocation.longitude.toStringAsFixed(6)}'
+      LocationConfig.mapScreenTag,
+      '🎮 ジョイスティック: 仮想位置更新・地図中心移動 lat=${newLocation.latitude.toStringAsFixed(6)}, lng=${newLocation.longitude.toStringAsFixed(6)}',
     );
   }
 
@@ -227,21 +370,27 @@ class _MapScreenState extends State<MapScreen> {
               // 現在地マーカー（取得済みの場合）
               if (_currentLocation != null)
                 MarkerLayer(
+                  rotate: true, // 地図回転時にマーカーを逆回転させて画面向きを保つ
                   markers: [
                     Marker(
-                      point: _shouldShowDevTools ? _virtualLocation : _currentLocation!,
+                      point: _shouldShowDevTools
+                          ? _virtualLocation
+                          : _currentLocation!,
                       width: 40,
                       height: 40,
+                      alignment: Alignment.center, // 中央を基準点に
                       child: Container(
                         decoration: BoxDecoration(
-                          color: _shouldShowDevTools 
-                            ? Colors.orange.withValues(alpha: 0.8) 
-                            : Colors.blue.withValues(alpha: 0.7),
+                          color: _shouldShowDevTools
+                              ? Colors.orange.withValues(alpha: 0.8)
+                              : Colors.blue.withValues(alpha: 0.7),
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
                         child: Icon(
-                          _shouldShowDevTools ? Icons.developer_mode : Icons.person_pin_circle,
+                          _shouldShowDevTools
+                              ? Icons.developer_mode
+                              : Icons.person_pin_circle,
                           color: Colors.white,
                           size: 24,
                         ),
@@ -249,21 +398,39 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   ],
                 ),
+              // 吹き出し表示
+              if (_bubblePositions.isNotEmpty)
+                MarkerLayer(
+                  rotate: true, // 地図回転時にマーカーを逆回転させて画面向きを保つ
+                  markers: _bubblePositions.map((bubblePosition) {
+                    return Marker(
+                      point: bubblePosition.position,
+                      width: 200,
+                      height: 80,
+                      alignment: Alignment.bottomCenter, // 吹き出しの下端中央を基準点に
+                      child: BubbleWidget(
+                        post: bubblePosition.post,
+                        onTap: () => _onBubbleTap(bubblePosition.post),
+                      ),
+                    );
+                  }).toList(),
+                ),
               // アトリビューション（レイヤーとして配置）
               RichAttributionWidget(
                 attributions: [
                   TextSourceAttribution('StadiaMaps'),
-                  // TextSourceAttribution(
-                  //   "Stamen Design",
-                  //   onTap: () => launchUrl(Uri.parse("https://stamen.com/")),
-                  //   prependCopyright: true,
-                  // ),
                   TextSourceAttribution(
-                    "OpenStreetMap",
-                    onTap: () =>
-                        launchUrl(Uri.parse("https://www.openstreetmap.org/copyright")),
+                    "Stamen Design",
+                    onTap: () => launchUrl(Uri.parse("https://stamen.com/")),
                     prependCopyright: true,
                   ),
+                  // TextSourceAttribution(
+                  //   "OpenStreetMap",
+                  //   onTap: () => launchUrl(
+                  //     Uri.parse("https://www.openstreetmap.org/copyright"),
+                  //   ),
+                  //   prependCopyright: true,
+                  // ),
                 ],
               ),
             ],
@@ -311,7 +478,7 @@ class _MapScreenState extends State<MapScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'DEV MODE\n現在位置: ${_virtualLocation.latitude.toStringAsFixed(4)}, ${_virtualLocation.longitude.toStringAsFixed(4)}\n🕹️ ジョイスティックで移動（地図追従）\n🧭 コンパスで現在位置に移動',
+                  '現在位置: ${_virtualLocation.latitude.toStringAsFixed(4)}, ${_virtualLocation.longitude.toStringAsFixed(4)}',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 9,
@@ -328,10 +495,7 @@ class _MapScreenState extends State<MapScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _centerOnCurrentLocation,
         tooltip: '現在地に移動して北向きに調整',
-        child: FaIcon(
-          FontAwesomeIcons.compass,
-          size: 24,
-        ),
+        child: FaIcon(FontAwesomeIcons.compass, size: 24),
       ),
     );
   }
