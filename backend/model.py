@@ -1,0 +1,60 @@
+from datetime import datetime
+from typing import Any, Optional
+
+from pydantic import BaseModel
+
+
+class PromptBase(BaseModel):
+    id: int
+    prompt: str
+    area_id: int
+    created_at: datetime
+
+
+class UserPost(BaseModel):
+    id: int
+    content: str
+    cell_id: int
+    created_at: datetime
+
+
+class LLMPost(BaseModel):
+    id: int
+    content: str
+    user_post_id: int
+    created_at: datetime
+
+
+class Area(BaseModel):
+    id: int
+    name: str
+
+
+class Cell(BaseModel):
+    id: int
+    geo_hash: str
+    location: tuple[float, float]
+
+
+class Post(BaseModel):
+    id: int
+    content: str
+    cell_id: int
+    created_at: datetime
+    cells: Optional[dict[str, Any]] = None
+
+
+class CurrentResponse(BaseModel):
+    area: Area
+    cell: Cell
+
+
+class CreatePostResponse(BaseModel):
+    success: bool
+    user_post_id: int
+
+
+class SignupResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    user_id: str

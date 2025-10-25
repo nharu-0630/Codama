@@ -10,6 +10,9 @@ dependencies = [
     "pydantic>=2.9.0",
     "supabase>=2.22.2",
     "python-dotenv>=1.1.1",
+    "pygeohash>=3.2.0",
+    "googlemaps>=4.10.0",
+    "shapely>=2.1.2",
 ]
 
 [dependency-groups]
