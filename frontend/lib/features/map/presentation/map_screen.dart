@@ -13,8 +13,9 @@ import '../widgets/dev_tools/dev_location_service.dart';
 import '../../post/models/post.dart';
 import '../../post/models/bubble_position.dart';
 import '../../post/services/bubble_manager.dart';
-import '../../post/services/simple_post_service.dart';
+import '../../post/services/post_service.dart';
 import '../../post/widgets/bubble_widget.dart';
+import '../../post/widgets/create_post_dialog.dart';
 
 // 水彩画風　stamen_watercolor
 const _styleUrl =
@@ -45,9 +46,10 @@ class _MapScreenState extends State<MapScreen> {
 
   // 吹き出し関連
   final BubbleManager _bubbleManager = BubbleManager();
-  final SimplePostService _simplePostService = SimplePostService();
+  late PostService _postService;
   List<Post> _posts = [];
   List<BubblePosition> _bubblePositions = [];
+  bool _isLoadingPosts = false;
 
   @override
   void initState() {
@@ -55,24 +57,23 @@ class _MapScreenState extends State<MapScreen> {
     _mapController = MapController();
     LocationConfig.log(LocationConfig.mapScreenTag, '🗺️ MapScreen初期化開始');
 
+    // PostServiceを初期化
+    _postService = PostService();
+    
     // 開発ツール初期化
     _initializeDevTools();
 
     _checkInitialLocation();
     _startLocationTracking();
     
-    // デモ用投稿を追加
-    _simplePostService.addDemoPosts();
-    // 初期化時は_updatePostsを呼ばない（MapControllerがまだ準備できていないため）
-    // 代わりにWidgetsBinding.instance.addPostFrameCallbackで実行
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updatePosts();
-    });
+    // サービス初期化とデモデータ追加
+    _initializePostService();
   }
 
   @override
   void dispose() {
     _liveLocationController.dispose();
+    _postService.dispose();
     super.dispose();
   }
 
@@ -91,32 +92,111 @@ class _MapScreenState extends State<MapScreen> {
     _updateBubblePositions();
   }
 
-  /// 投稿を更新
-  void _updatePosts() {
-    setState(() {
-      _posts = _simplePostService.getAllPosts();
-    });
-    _updateBubblePositions();
-    LocationConfig.log(
-      LocationConfig.mapScreenTag,
-      '💬 投稿データを更新しました: ${_posts.length}件',
-    );
+  /// PostServiceを初期化
+  Future<void> _initializePostService() async {
+    try {
+      await _postService.initialize();
+      
+      
+      // 初期化完了後に投稿を読み込み
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadPosts();
+      });
+    } catch (e) {
+      LocationConfig.log(LocationConfig.mapScreenTag, '❌ PostService初期化エラー: $e');
+    }
   }
 
-  /// 特定座標に投稿を追加
-  void addPostAtLocation({
+  /// 投稿を読み込み
+  Future<void> _loadPosts() async {
+    if (_isLoadingPosts) return;
+    
+    setState(() {
+      _isLoadingPosts = true;
+    });
+
+    try {
+      final posts = await _postService.getAllPosts();
+      setState(() {
+        _posts = posts;
+        _isLoadingPosts = false;
+      });
+      _updateBubblePositions();
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        '💬 投稿データを読み込みました: ${posts.length}件',
+      );
+    } catch (e) {
+      setState(() {
+        _isLoadingPosts = false;
+      });
+      LocationConfig.log(LocationConfig.mapScreenTag, '❌ 投稿読み込みエラー: $e');
+    }
+  }
+
+  /// 特定座標に投稿を作成
+  Future<void> createPostAtLocation({
     required double lat,
     required double lng,
     required String text,
     PostKind kind = PostKind.user,
-  }) {
-    _simplePostService.addPost(
-      lat: lat,
-      lng: lng,
-      text: text,
-      kind: kind,
+  }) async {
+    try {
+      await _postService.createPost(
+        lat: lat,
+        lng: lng,
+        text: text,
+        kind: kind,
+      );
+      
+      // 投稿作成後に再読み込み
+      await _loadPosts();
+      
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        '✅ 投稿作成成功: $text',
+      );
+    } catch (e) {
+      LocationConfig.log(LocationConfig.mapScreenTag, '❌ 投稿作成エラー: $e');
+      rethrow; // エラーをUI層に伝播
+    }
+  }
+
+  /// 投稿作成ダイアログを表示
+  void _showCreatePostDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => CreatePostDialog(
+        onPostCreate: (String text, PostKind kind) async {
+          await _createPostAtCurrentLocation(text, kind);
+        },
+      ),
     );
-    _updatePosts();
+  }
+
+  /// 現在地に投稿を作成
+  Future<void> _createPostAtCurrentLocation(String text, PostKind kind) async {
+    // 現在地または開発ツールの仮想位置を使用
+    final location = _shouldShowDevTools ? _virtualLocation : _currentLocation;
+    
+    if (location == null) {
+      // 位置情報が取得できない場合はデフォルト位置（横浜駅）を使用
+      await createPostAtLocation(
+        lat: LocationConfig.defaultLocation.latitude,
+        lng: LocationConfig.defaultLocation.longitude,
+        text: text,
+        kind: kind,
+      );
+      LocationConfig.log(LocationConfig.mapScreenTag, '⚠️ 位置情報未取得のためデフォルト位置に投稿');
+    } else {
+      await createPostAtLocation(
+        lat: location.latitude,
+        lng: location.longitude,
+        text: text,
+        kind: kind,
+      );
+      LocationConfig.log(LocationConfig.mapScreenTag, '💬 投稿作成: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}');
+    }
   }
 
   /// 吹き出し位置を更新
@@ -491,12 +571,34 @@ class _MapScreenState extends State<MapScreen> {
         ],
       ),
 
-      // コンパスボタン
-      floatingActionButton: FloatingActionButton(
-        onPressed: _centerOnCurrentLocation,
-        tooltip: '現在地に移動して北向きに調整',
-        child: FaIcon(FontAwesomeIcons.compass, size: 24),
+      // フローティングアクションボタン（プラスボタン）
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // コンパスボタン
+          FloatingActionButton(
+            heroTag: "compass",
+            onPressed: _centerOnCurrentLocation,
+            tooltip: '現在地に移動して北向きに調整',
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.blue,
+            child: FaIcon(FontAwesomeIcons.compass, size: 24),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // 投稿作成ボタン
+          FloatingActionButton(
+            heroTag: "create_post",
+            onPressed: _showCreatePostDialog,
+            tooltip: '新しい投稿を作成',
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            child: const Icon(Icons.add, size: 28),
+          ),
+        ],
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
