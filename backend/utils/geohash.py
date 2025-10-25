@@ -5,6 +5,7 @@ from typing import Any
 import pygeohash as gh  # type: ignore
 from fastapi import HTTPException
 from shapely import wkb
+from shapely.geometry import Point
 
 from config.database import gmaps, supabase
 from config.settings import settings
@@ -65,10 +66,15 @@ def get_or_create_cell(lat: float, lon: float) -> dict[str, Any]:
     return cell.data[0]  # type: ignore
 
 
-def parse_wkt_location(location_wkt: str) -> tuple[float, float]:
+def decode_wkt_location(location_wkt: str) -> tuple[float, float]:
     """Parse WKT location string to (latitude, longitude) tuple."""
     point = wkb.loads(location_wkt, hex=True)
     return point.xy[1][0], point.xy[0][0]  # type: ignore
+
+
+def encode_wkt_location(lat: float, lon: float) -> str:
+    """Convert (latitude, longitude) to WKT location string."""
+    return wkb.dumps(Point(lon, lat), hex=True, srid=4326)  # type: ignore
 
 
 def _get_area_name_from_geocode(lat: float, lon: float) -> str | None:

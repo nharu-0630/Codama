@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from config.database import supabase
-from model import Area, Cell, CurrentResponse
+from schemas.model import Area, Cell, CurrentResponse
 from utils.auth import get_current_user
-from utils.geohash import get_or_create_cell, parse_wkt_location
+from utils.geohash import decode_wkt_location, get_or_create_cell
 
 router = APIRouter(prefix="/current", tags=["current"])
 
@@ -18,7 +18,7 @@ async def get_current(lat: float, lon: float):
     cell_data = get_or_create_cell(lat, lon)
 
     location_wkt = str(cell_data["location"])
-    location = parse_wkt_location(location_wkt)
+    location = decode_wkt_location(location_wkt)
 
     area_id = int(cell_data["area_id"])  # type: ignore
     area = supabase.from_("areas").select("*").eq("id", area_id).execute()

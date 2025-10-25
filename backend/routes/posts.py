@@ -5,10 +5,17 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from config.database import supabase
-from model import Cell, CreatePostRequest, CreatePostResponse, Post, PostsResponse
+from schemas.model import (
+    Cell,
+    CreatePostRequest,
+    CreatePostResponse,
+    LLMPost,
+    PostsResponse,
+    UserPost,
+)
 from utils.auth import get_current_user
 from utils.coordinates import add_random_offset
-from utils.geohash import encode_location, parse_wkt_location
+from utils.geohash import decode_wkt_location, encode_location, encode_wkt_location
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -19,26 +26,35 @@ async def get_posts(lat: float, lon: float):
     geo_hash = encode_location(lat, lon)
     posts = (
         supabase.from_("user_posts")
-        .select("*, cells!inner(id, geo_hash, location)")
+        .select(
+            "*, cells!inner(id, geo_hash, location), llm_posts(id, content, location, created_at)"
+        )
         .like("cells.geo_hash", f"{geo_hash}%")
         .execute()
     )
     return PostsResponse(
         user_posts=[
-        Post(
-            id=post["id"],  # type: ignore
-            content=post["content"],  # type: ignore
-            location=parse_wkt_location(str(post["location"])),  # type: ignore
-            created_at=post["created_at"],  # type: ignore
-            cell=Cell(
-                id=post["cells"]["id"],  # type: ignore
-                geo_hash=post["cells"]["geo_hash"],  # type: ignore
-                location=parse_wkt_location(str(post["cells"]["location"])),  # type: ignore
-            ),
-        )
-        for post in posts.data
+            UserPost(
+                id=post["id"],  # type: ignore
+                content=post["content"],  # type: ignore
+                location=decode_wkt_location(str(post["location"])),  # type: ignore
+                created_at=post["created_at"],  # type: ignore
+                cell=Cell(
+                    id=post["cells"]["id"],  # type: ignore
+                    geo_hash=post["cells"]["geo_hash"],  # type: ignore
+                    location=decode_wkt_location(str(post["cells"]["location"])),  # type: ignore
+                ),
+                llm_post=LLMPost(
+                    id=post["llm_posts"]["id"],  # type: ignore
+                    content=post["llm_posts"]["content"],  # type: ignore
+                    location=decode_wkt_location(str(post["llm_posts"]["location"])),  # type: ignore
+                    created_at=post["llm_posts"]["created_at"],  # type: ignore
+                )
+                if post.get("llm_posts")  # type: ignore
+                else None,
+            )
+            for post in posts.data
         ],
-        llm_posts=[],
     )
 
 
@@ -55,15 +71,13 @@ async def create_post(
     if not cell_response.data:
         raise HTTPException(status_code=404, detail="Cell not found")
 
-    # Add random offset to coordinates for privacy
     location = add_random_offset(request.lat, request.lon)
-
     cell_id = int(cell_response.data[0]["id"])  # type: ignore
     new_post: dict[str, Any] = {
         "content": request.content,
         "cell_id": cell_id,
         "user_uuid": user.id,
-        "location": 
+        "location": encode_wkt_location(location[0], location[1]),
     }
     created_post = supabase.from_("user_posts").insert(new_post).execute()
     if not created_post.data:

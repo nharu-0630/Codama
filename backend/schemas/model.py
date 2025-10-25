@@ -1,3 +1,5 @@
+"""API schemas for the application."""
+
 from datetime import datetime
 from typing import Optional
 
@@ -11,31 +13,31 @@ class PromptBase(BaseModel):
     created_at: datetime
 
 
-class UserPost(BaseModel):
-    id: int
-    content: str
-    location: tuple[float, float]
-    cell_id: int
-    created_at: datetime
-
-
 class LLMPost(BaseModel):
     id: int
     content: str
     location: tuple[float, float]
-    user_post_id: int
     created_at: datetime
-
-
-class Area(BaseModel):
-    id: int
-    name: str
 
 
 class Cell(BaseModel):
     id: int
     geo_hash: str
     location: tuple[float, float]
+
+
+class UserPost(BaseModel):
+    id: int
+    content: str
+    location: tuple[float, float]
+    cell: Cell
+    llm_post: Optional[LLMPost]
+    created_at: datetime
+
+
+class Area(BaseModel):
+    id: int
+    name: str
 
 
 class CurrentResponse(BaseModel):
@@ -45,7 +47,6 @@ class CurrentResponse(BaseModel):
 
 class PostsResponse(BaseModel):
     user_posts: list[UserPost]
-    llm_posts: list[LLMPost]
 
 
 class CreatePostRequest(BaseModel):

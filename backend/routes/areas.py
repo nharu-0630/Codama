@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 
 from config.database import supabase
-from model import Area
+from schemas.model import Area
 
 router = APIRouter(prefix="/areas", tags=["areas"])
 

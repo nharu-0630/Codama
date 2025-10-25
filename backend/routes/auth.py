@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 
 from config.database import supabase
-from model import SignupResponse
+from schemas.model import SignupResponse
 
 router = APIRouter(prefix="/signup", tags=["auth"])
 
