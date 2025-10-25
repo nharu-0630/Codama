@@ -15,7 +15,7 @@ from schemas.api import APIPost, CreatePostRequest, CreatePostResponse, PostsRes
 from schemas.db import DBLLMPost, DBUserPost
 from utils.auth import get_current_user
 from utils.coordinates import add_random_offset
-from backend.utils.geo_hash import (
+from utils.geo_hash import (
     decode_wkt_location,
     encode_geo_hash,
     encode_wkt_location,

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from repositories.area_repository import get_area_by_id
 from schemas.api import APIArea, APICell, CurrentResponse
 from utils.auth import get_current_user
-from backend.utils.geo_hash import decode_wkt_location, get_or_create_cell
+from utils.geo_hash import decode_wkt_location, get_or_create_cell
 
 router = APIRouter(prefix="/current", tags=["current"])
 
