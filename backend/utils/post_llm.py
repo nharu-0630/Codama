@@ -1,5 +1,3 @@
-"""General utilities for LLM interactions."""
-
 import openai
 
 from repositories.area_repository import get_area_by_id
@@ -53,33 +51,34 @@ POST_TEMPLATE = """
 
 
 async def generate_post(content: str, area_id: int) -> str | None:
-    """Generate a response from the LLM based on the given content and area."""
-
-    # Get area information
+    """ユーザーの投稿内容とエリア情報に基づいてLLMから返信を生成"""
+    # エリア情報を取得
     db_area = get_area_by_id(area_id)
     if not db_area:
         return None
 
-    # Get the latest prompt summary for the given area_id
+    # 指定されたエリアの最新のプロンプト要約を取得
     db_prompts = get_prompts_by_area_id(area_id)
     summary_text: str | None = None
 
     if db_prompts:
-        # Sort by created_at descending
+        # 作成日時の降順でソートして最新のプロンプトを取得
         sorted_prompts = sorted(db_prompts, key=lambda p: p.created_at, reverse=True)
         summary_text = sorted_prompts[0].prompt
 
-    # Get cell_ids for the given area_id
+    # エリアIDに紐づくセルIDのリストを取得
     db_cells = get_cells_by_area_id(area_id)
     cell_ids = [cell.id for cell in db_cells]
 
+    # 参照用の最近の投稿を取得
     shots_text: str | None = None
     if cell_ids:
-        # Get recent user_posts filtered by cell_ids (limit 5)
+        # セルIDでフィルタして最近の投稿を5件取得
         db_posts = get_recent_user_posts_by_cell_ids(cell_ids, limit=5)
         if db_posts:
             shots_text = "\n".join([f"- {post.content}" for post in db_posts])
 
+    # LLMを使用して返信を生成
     resp = openai.chat.completions.create(
         model="gpt-4o",
         messages=[

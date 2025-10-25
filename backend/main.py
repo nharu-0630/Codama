@@ -1,5 +1,3 @@
-"""Main FastAPI application."""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,10 +5,11 @@ from routes import areas, auth, batch, current, health, posts
 
 
 def create_app() -> FastAPI:
-    """Create and configure the FastAPI application."""
+    """FastAPIアプリケーションの作成と設定"""
+    # FastAPIインスタンスを作成
     app = FastAPI()
 
-    # Add CORS middleware
+    # CORSミドルウェアを追加してクロスオリジンリクエストを許可
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -19,7 +18,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Include routers
+    # 各エンドポイントのルーターを登録
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(areas.router)

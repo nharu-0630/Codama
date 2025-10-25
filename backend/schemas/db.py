@@ -1,5 +1,3 @@
-"""API schemas for the application."""
-
 from datetime import datetime
 from uuid import UUID
 
@@ -7,7 +5,7 @@ from pydantic import BaseModel
 
 
 class DBArea(BaseModel):
-    """Database model for areas table."""
+    """areasテーブルのデータベースモデル"""
 
     id: int
     name: str
@@ -15,40 +13,40 @@ class DBArea(BaseModel):
 
 
 class DBCell(BaseModel):
-    """Database model for cells table."""
+    """cellsテーブルのデータベースモデル"""
 
     id: int
     geo_hash: str
-    location: str  # PostGIS geography(POINT) as WKT string
+    location: str
     area_id: int
     created_at: datetime
 
 
 class DBUserPost(BaseModel):
-    """Database model for user_posts table."""
+    """user_postsテーブルのデータベースモデル"""
 
     id: int
     uuid: UUID
     content: str
     user_uuid: UUID
     cell_id: int
-    location: str  # PostGIS geography(POINT) as WKT string
+    location: str
     created_at: datetime
 
 
 class DBLLMPost(BaseModel):
-    """Database model for llm_posts table."""
+    """llm_postsテーブルのデータベースモデル"""
 
     id: int
     uuid: UUID
     content: str
     user_post_uuid: UUID
-    location: str  # PostGIS geography(POINT) as WKT string
+    location: str
     created_at: datetime
 
 
 class DBPrompt(BaseModel):
-    """Database model for prompts table."""
+    """promptsテーブルのデータベースモデル"""
 
     id: int
     prompt: str
@@ -57,16 +55,16 @@ class DBPrompt(BaseModel):
 
 
 class DBEmbeddingUserPost(BaseModel):
-    """Database model for embedding_user_posts table."""
+    """embedding_user_postsテーブルのデータベースモデル"""
 
     id: int
-    embedding: list[float]  # vector(1536)
+    embedding: list[float]
     user_post_uuid: UUID
     created_at: datetime
 
 
 class DBFriend(BaseModel):
-    """Database model for friends table."""
+    """friendsテーブルのデータベースモデル"""
 
     id: int
     user_uuid: UUID

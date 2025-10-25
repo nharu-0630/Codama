@@ -5,26 +5,26 @@ from pydantic import BaseModel
 
 
 class APIArea(BaseModel):
-    """API model for area information."""
+    """エリア情報のAPIモデル"""
 
     id: int
     name: str
 
 
 class APICell(BaseModel):
-    """API model for cell information."""
+    """セル情報のAPIモデル"""
 
     id: int
     geo_hash: str
-    location: tuple[float, float]  # (latitude, longitude)
+    location: tuple[float, float]
 
 
 class APIPost(BaseModel):
-    """API model for post information (user or LLM posts)."""
+    """投稿情報のAPIモデル（ユーザー投稿・LLM返信）"""
 
     uuid: UUID
     content: str
-    location: tuple[float, float]  # (latitude, longitude)
+    location: tuple[float, float]
     replies: list["APIPost"] = []
     created_at: datetime
 
@@ -33,7 +33,7 @@ APIPost.update_forward_refs()  # type: ignore
 
 
 class APIPrompt(BaseModel):
-    """API model for prompt information."""
+    """プロンプト情報のAPIモデル"""
 
     id: int
     prompt: str
@@ -42,27 +42,27 @@ class APIPrompt(BaseModel):
 
 
 class CurrentResponse(BaseModel):
-    """Response for current location endpoint."""
+    """現在位置エンドポイントのレスポンス"""
 
     area: APIArea
     cell: APICell
 
 
 class PostsResponse(BaseModel):
-    """Response for posts endpoint."""
+    """投稿一覧エンドポイントのレスポンス"""
 
     posts: list[APIPost]
 
 
 class CreatePostResponse(BaseModel):
-    """Response for creating a post."""
+    """投稿作成エンドポイントのレスポンス"""
 
     post: APIPost
     similar_posts: list[APIPost]
 
 
 class SignupResponse(BaseModel):
-    """Response for signup endpoint."""
+    """サインアップエンドポイントのレスポンス"""
 
     access_token: str
     refresh_token: str
@@ -70,13 +70,13 @@ class SignupResponse(BaseModel):
 
 
 class UpdatePromptResponse(BaseModel):
-    """Response for updating prompts."""
+    """プロンプト更新エンドポイントのレスポンス"""
 
     success: bool
 
 
 class CreatePostRequest(BaseModel):
-    """Request for creating a post."""
+    """投稿作成エンドポイントのリクエスト"""
 
     content: str
     lat: float

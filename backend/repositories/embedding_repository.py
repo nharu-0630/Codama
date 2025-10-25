@@ -1,5 +1,3 @@
-"""Embedding repository for data access."""
-
 from typing import Any, cast
 from uuid import UUID
 
@@ -11,11 +9,15 @@ from schemas.db import DBEmbeddingUserPost
 def create_embedding(
     user_post_uuid: UUID, embedding: list[float]
 ) -> DBEmbeddingUserPost:
+    """投稿のembeddingベクトルを作成"""
+    # embeddingデータを構築
     embedding_data: dict[str, Any] = {
         "user_post_uuid": str(user_post_uuid),
         "embedding": embedding,
     }
+    # データベースにembeddingを挿入
     response = supabase.from_("embedding_user_posts").insert(embedding_data).execute()
+    # 作成されたembeddingをDBEmbeddingUserPostモデルに変換して返却
     data = cast(list[dict[str, Any]], response.data)
     return DBEmbeddingUserPost(**data[0])
 
@@ -25,10 +27,14 @@ def find_similar_posts(
     match_count: int | None = None,
     threshold: float | None = None,
 ) -> list[DBEmbeddingUserPost]:
+    """embeddingベクトルから類似投稿を検索"""
+    # デフォルト値を設定
     if match_count is None:
         match_count = settings.CODAMA_MAX_COUNT - settings.CODAMA_AI_COUNT
     if threshold is None:
         threshold = settings.CODAMA_THRESHOLD
+
+    # データベースの関数を呼び出して類似投稿を検索
     response = supabase.rpc(
         "find_similar_posts",
         {
@@ -37,5 +43,7 @@ def find_similar_posts(
             "threshold": threshold,
         },
     ).execute()
+
+    # 取得したデータをDBEmbeddingUserPostモデルのリストに変換
     data = cast(list[dict[str, Any]], response.data)
     return [DBEmbeddingUserPost(**item) for item in data]

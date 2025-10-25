@@ -1,5 +1,3 @@
-"""General utilities for LLM interactions."""
-
 import openai
 
 from repositories.area_repository import get_area_by_id
@@ -29,37 +27,38 @@ SUMMARY_TEMPLATE = """
 
 
 async def generate_summary(area_id: int) -> str | None:
-    """Generate a response from the LLM based on the given content and area."""
-
-    # Get area information
+    """エリアの投稿群からLLMを使用して新しい要約を生成"""
+    # エリア情報を取得
     db_area = get_area_by_id(area_id)
     if not db_area:
         return None
 
-    # Get the latest prompt summary for the given area_id
+    # 指定されたエリアの最新のプロンプト要約を取得
     db_prompts = get_prompts_by_area_id(area_id)
     summary_text: str | None = None
     latest_created_at = "1970-01-01T00:00:00Z"
 
     if db_prompts:
-        # Sort by created_at descending
+        # 作成日時の降順でソートして最新のプロンプトを取得
         sorted_prompts = sorted(db_prompts, key=lambda p: p.created_at, reverse=True)
         summary_text = sorted_prompts[0].prompt
         latest_created_at = str(sorted_prompts[0].created_at)
 
-    # Get cell_ids for the given area_id
+    # エリアIDに紐づくセルIDのリストを取得
     db_cells = get_cells_by_area_id(area_id)
     cell_ids = [cell.id for cell in db_cells]
     if not cell_ids:
         return None
 
-    # Get user_posts filtered by cell_ids and created after latest_created_at
+    # 最新の要約作成日時以降の投稿を取得
     db_posts = get_user_posts_by_cell_ids_after_date(cell_ids, latest_created_at)
     if not db_posts:
         return None
 
+    # 投稿を箇条書き形式に整形
     shots_text = "\n".join([f"- {post.content}" for post in db_posts])
 
+    # LLMを使用して新しい要約を生成
     resp = openai.chat.completions.create(
         model="gpt-4o",
         messages=[
