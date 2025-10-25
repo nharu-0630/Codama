@@ -14,7 +14,6 @@ import '../widgets/dev_tools/dev_location_service.dart';
 import '../../post/models/post.dart';
 import '../../post/models/bubble_position.dart';
 import '../../post/services/bubble_manager.dart';
-import '../../post/services/post_service.dart';
 import '../../post/widgets/bubble_widget.dart';
 import '../../post/widgets/create_post_dialog.dart';
 import '../../auth/services/auth_service.dart';
@@ -51,7 +50,6 @@ class _MapScreenState extends State<MapScreen> {
 
   // 吹き出し関連
   final BubbleManager _bubbleManager = BubbleManager();
-  late PostService _postService;
   List<Post> _posts = [];
   List<BubblePosition> _bubblePositions = [];
 
@@ -60,9 +58,6 @@ class _MapScreenState extends State<MapScreen> {
     super.initState();
     _mapController = MapController();
     LocationConfig.log(LocationConfig.mapScreenTag, '🗺️ MapScreen初期化開始');
-
-    // PostServiceを初期化
-    _postService = PostService();
 
     // 開発ツール初期化
     _initializeDevTools();
@@ -77,7 +72,6 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void dispose() {
     _liveLocationController.dispose();
-    _postService.dispose();
     _cellTrackingService.dispose();
     super.dispose();
   }
@@ -97,46 +91,26 @@ class _MapScreenState extends State<MapScreen> {
     _updateBubblePositions();
   }
 
-  /// PostServiceを初期化
-  Future<void> _initializePostService() async {
-    try {
-      await _postService.initialize();
-      // API駆動のため、初期投稿読み込みは行わない
-      // セル変更時にAPIから投稿が取得される
-    } catch (e) {
-      LocationConfig.log(
-        LocationConfig.mapScreenTag,
-        '❌ PostService初期化エラー: $e',
-      );
-    }
-  }
-
   /// 認証チェックとサービス初期化
   Future<void> _checkAuthenticationAndInitialize() async {
     try {
       // 保存されたトークンを読み込み
       await _authService.loadStoredTokens();
-      
+
       // 認証されていない場合はサインアップモーダルを表示
       if (!_authService.isAuthenticated) {
         LocationConfig.log(LocationConfig.mapScreenTag, '🔒 認証が必要です、サインアップモーダルを表示');
         _showSignupModal();
         return;
       }
-      
+
       // 認証済みの場合はサービスを初期化
-      await _initializeServices();
-      
+      await _initializeCellTracking();
+
     } catch (e) {
       LocationConfig.log(LocationConfig.mapScreenTag, '❌ 認証チェックエラー: $e');
       _showSignupModal();
     }
-  }
-
-  /// サービス初期化（認証後）
-  Future<void> _initializeServices() async {
-    await _initializePostService();
-    await _initializeCellTracking();
   }
 
   /// セル追跡サービスを初期化
@@ -171,7 +145,7 @@ class _MapScreenState extends State<MapScreen> {
       builder: (context) => SignupModal(
         onSuccess: () async {
           LocationConfig.log(LocationConfig.mapScreenTag, '✅ サインアップ成功、サービスを初期化');
-          await _initializeServices();
+          await _initializeCellTracking();
         },
       ),
     );
@@ -568,15 +542,15 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   ],
                 ),
-              // 吹き出し表示
+              // 吹き出し表示（逆順にして後から表示した吹き出しを手前に）
               if (_bubblePositions.isNotEmpty)
                 MarkerLayer(
                   rotate: true, // 地図回転時にマーカーを逆回転させて画面向きを保つ
-                  markers: _bubblePositions.map((bubblePosition) {
+                  markers: _bubblePositions.reversed.map((bubblePosition) {
                     return Marker(
                       point: bubblePosition.position,
                       width: 200,
-                      height: 80,
+                      height: bubblePosition.height,
                       alignment: Alignment.bottomCenter, // 吹き出しの下端中央を基準点に
                       child: BubbleWidget(
                         post: bubblePosition.post,

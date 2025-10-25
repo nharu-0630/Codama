@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../features/auth/services/auth_service.dart';
+import '../../../core/constants/location_config.dart';
 
 class LocationData {
   final Area area;
@@ -61,19 +62,47 @@ class LocationApiService {
   final AuthService _authService = AuthService();
 
   Future<LocationData?> getCurrentLocation(double lat, double lon) async {
+    final uri = Uri.parse('$_baseUrl/current?lat=$lat&lon=$lon');
+
+    LocationConfig.log(
+      'LocationApiService',
+      '🌐 API呼び出し: GET $uri',
+    );
+
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/current?lat=$lat&lon=$lon'),
+        uri,
         headers: _authService.getAuthHeaders(),
+      );
+
+      LocationConfig.log(
+        'LocationApiService',
+        '📡 API応答: ステータス ${response.statusCode}',
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return LocationData.fromJson(data);
+        final locationData = LocationData.fromJson(data);
+
+        LocationConfig.log(
+          'LocationApiService',
+          '✅ セル情報取得成功: ${locationData.cell.geoHash} (area: ${locationData.area.name})',
+        );
+
+        return locationData;
       }
+
+      LocationConfig.log(
+        'LocationApiService',
+        '⚠️ セル情報取得失敗: ステータス ${response.statusCode}',
+      );
+
       return null;
     } catch (e) {
-      print('Current location API error: $e');
+      LocationConfig.log(
+        'LocationApiService',
+        '❌ セル情報取得エラー: $e',
+      );
       return null;
     }
   }

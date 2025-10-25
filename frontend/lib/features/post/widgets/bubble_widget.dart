@@ -15,69 +15,72 @@ class BubbleWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUserPost = post.kind == PostKind.user;
     final isLandMemory = post.kind == PostKind.land;
-    
+
     // ユーザー投稿: 青系
     // 土地の記憶（LLM返信）: 紫系で神秘的に
-    final bubbleColor = isUserPost 
-        ? Colors.blue.shade100 
-        : isLandMemory 
+    final bubbleColor = isUserPost
+        ? Colors.blue.shade100
+        : isLandMemory
             ? Colors.purple.shade50.withValues(alpha: 0.9)
             : Colors.green.shade100;
-    
-    final borderColor = isUserPost 
-        ? Colors.blue.shade400 
-        : isLandMemory 
+
+    final borderColor = isUserPost
+        ? Colors.blue.shade400
+        : isLandMemory
             ? Colors.purple.shade300
             : Colors.green.shade400;
-    
-    final textColor = isUserPost 
-        ? Colors.blue.shade800 
-        : isLandMemory 
+
+    final textColor = isUserPost
+        ? Colors.blue.shade800
+        : isLandMemory
             ? Colors.purple.shade700
             : Colors.green.shade800;
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        constraints: const BoxConstraints(
-          minWidth: 60,
-          maxWidth: 200,
-          minHeight: 40,
-        ),
-        child: CustomPaint(
-          painter: BubblePainter(
-            bubbleColor: bubbleColor,
-            borderColor: borderColor,
+      child: SizedBox(
+        width: double.infinity,
+        height: double.infinity,
+        child: Container(
+          constraints: const BoxConstraints(
+            minWidth: 60,
+            maxWidth: 200,
           ),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 土地の記憶の場合はアイコンを表示
-                if (isLandMemory) ...[
-                  Icon(
-                    Icons.auto_awesome,
-                    color: Colors.purple.shade400,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                Expanded(
-                  child: Text(
-                    post.text,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: isLandMemory ? 16 : 18,
-                      fontWeight: isLandMemory ? FontWeight.w400 : FontWeight.w500,
-                      fontStyle: isLandMemory ? FontStyle.italic : FontStyle.normal,
+          child: CustomPaint(
+            painter: BubblePainter(
+              bubbleColor: bubbleColor,
+              borderColor: borderColor,
+            ),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(10, 3, 10, 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 土地の記憶の場合はアイコンを表示
+                  if (isLandMemory) ...[
+                    Icon(
+                      Icons.auto_awesome,
+                      color: Colors.purple.shade400,
+                      size: 16,
                     ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 6),
+                  ],
+                  Expanded(
+                    child: Text(
+                      post.text,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 14,
+                        fontWeight: isLandMemory ? FontWeight.w400 : FontWeight.w500,
+                        fontStyle: isLandMemory ? FontStyle.italic : FontStyle.normal,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -109,7 +112,7 @@ class BubblePainter extends CustomPainter {
     final path = Path();
     const radius = 12.0;
     const tailWidth = 16.0;
-    const tailHeight = 8.0;
+    const tailHeight = 6.0;
 
     path.addRRect(
       RRect.fromLTRBR(
