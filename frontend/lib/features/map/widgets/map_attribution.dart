@@ -7,24 +7,30 @@ class MapAttribution extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RichAttributionWidget(attributions: [
-      TextSourceAttribution(
-        "Stadia Maps",
-        onTap: () => launchUrl(Uri.parse("https://stadiamaps.com/")),
-        prependCopyright: true,
-      ),
-      TextSourceAttribution(
-        "OpenMapTiles",
-        onTap: () => launchUrl(Uri.parse("https://openmaptiles.org/")),
-        prependCopyright: true,
-      ),
-      TextSourceAttribution(
-        "OpenStreetMap",
-        onTap: () => launchUrl(
-          Uri.parse("https://www.openstreetmap.org/copyright"),
+    return RichAttributionWidget(
+      attributions: [
+        TextSourceAttribution(
+          "Stadia Maps",
+          onTap: () => launchUrl(Uri.parse("https://stadiamaps.com/")),
+          prependCopyright: true,
         ),
-        prependCopyright: true,
-      ),
-    ]);
+        TextSourceAttribution(
+          "OpenMapTiles",
+          onTap: () => launchUrl(Uri.parse("https://openmaptiles.org/")),
+          prependCopyright: true,
+        ),
+        // TextSourceAttribution(
+        //   "Stamen Design",
+        //   onTap: () => launchUrl(Uri.parse("https://stamen.com/")),
+        //   prependCopyright: true,
+        // ),
+        TextSourceAttribution(
+          "OpenStreetMap",
+          onTap: () =>
+              launchUrl(Uri.parse("https://www.openstreetmap.org/copyright")),
+          prependCopyright: true,
+        ),
+      ],
+    );
   }
 }

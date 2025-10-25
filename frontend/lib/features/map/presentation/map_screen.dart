@@ -4,7 +4,12 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../widgets/map_attribution.dart';
 
-const _styleUrl = "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
+// 水彩画風　stamen_watercolor
+// const _styleUrl ="https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg";
+
+// スタイリング無し版
+const _styleUrl =
+    "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
 
 class MapScreen extends StatelessWidget {
   const MapScreen({super.key});
