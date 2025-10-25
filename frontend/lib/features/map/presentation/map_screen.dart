@@ -3,8 +3,11 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../location/services/location_service.dart';
 import '../../location/services/live_location_controller.dart';
+import '../../../core/constants/location_config.dart';
+
 
 // 水彩画風　stamen_watercolor
 // const _styleUrl ="https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg";
@@ -23,8 +26,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   late MapController _mapController;
   final LocationService _locationService = LocationService();
-  final LiveLocationController _liveLocationController =
-      LiveLocationController();
+  final LiveLocationController _liveLocationController = LiveLocationController();
   LatLng? _currentLocation;
   String _locationStatus = '位置情報未取得';
   double? _lastZoomLevel;
@@ -33,7 +35,7 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _mapController = MapController();
-    debugPrint('[MapScreen] 🗺️ MapScreen初期化開始');
+    LocationConfig.log(LocationConfig.mapScreenTag, '🗺️ MapScreen初期化開始');
     _checkInitialLocation();
     _startLocationTracking();
   }
@@ -45,16 +47,16 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _onPositionChanged(MapCamera position, bool hasGesture) {
-    // ズームレベルが変化したときだけログ出力
-    if (_lastZoomLevel != position.zoom) {
-      debugPrint('[MapScreen] ズームレベル変更: ${_lastZoomLevel?.toStringAsFixed(1) ?? "初期"} → ${position.zoom.toStringAsFixed(1)}');
+    // ズームレベルが1単位以上変化したときのみログ出力
+    if (_lastZoomLevel == null || (position.zoom - _lastZoomLevel!).abs() >= 1.0) {
+      LocationConfig.log(LocationConfig.mapScreenTag, 'ズームレベル変更: ${_lastZoomLevel?.toStringAsFixed(1) ?? "初期"} → ${position.zoom.toStringAsFixed(1)}');
       _lastZoomLevel = position.zoom;
     }
   }
 
   /// 初期位置情報チェック
   Future<void> _checkInitialLocation() async {
-    debugPrint('[MapScreen] 🔍 初期位置情報チェック開始');
+    LocationConfig.log(LocationConfig.mapScreenTag, '🔍 初期位置情報チェック開始');
 
     final hasPermission = await _locationService.checkPermissionStatus();
     final serviceEnabled = await _locationService.isLocationServiceEnabled();
@@ -65,12 +67,12 @@ class _MapScreenState extends State<MapScreen> {
           'サービス: ${serviceEnabled ? "有効" : "無効"}';
     });
 
-    debugPrint('[MapScreen] 📊 初期状態: $_locationStatus');
+    LocationConfig.log(LocationConfig.mapScreenTag, '📊 初期状態: $_locationStatus');
   }
 
   /// 画面開始時に自動で位置情報追跡を開始
   Future<void> _startLocationTracking() async {
-    debugPrint('[MapScreen] 🚀 自動で常時追跡を開始します');
+    LocationConfig.log(LocationConfig.mapScreenTag, '🚀 自動で常時追跡を開始します');
     
     setState(() {
       _locationStatus = '位置情報追跡開始中...';
@@ -79,7 +81,7 @@ class _MapScreenState extends State<MapScreen> {
     await _liveLocationController.startTracking(
       onLocationUpdate: (LatLng location) {
         // 現在座標を常にログに出力
-        debugPrint('[MapScreen] 📍 現在位置: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}');
+        LocationConfig.log(LocationConfig.mapScreenTag, '📍 現在位置: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}');
         
         setState(() {
           _currentLocation = location;
@@ -90,7 +92,7 @@ class _MapScreenState extends State<MapScreen> {
         _mapController.move(location, _mapController.camera.zoom);
       },
       onError: (Object error) {
-        debugPrint('[MapScreen] ❌ 自動追跡エラー: $error');
+        LocationConfig.log(LocationConfig.mapScreenTag, '❌ 自動追跡エラー: $error');
         setState(() {
           _locationStatus = '追跡エラー: $error';
         });
@@ -101,20 +103,20 @@ class _MapScreenState extends State<MapScreen> {
 
   /// コンパスボタンが押されたときの処理（現在地に移動 + 北向き）
   void _centerOnCurrentLocation() {
-    debugPrint('[MapScreen] 🧭 コンパスボタンが押されました');
+    LocationConfig.log(LocationConfig.mapScreenTag, '🧭 コンパスボタンが押されました');
     
     if (_currentLocation != null) {
       // 現在地に移動してズームレベルを適切に設定
-      _mapController.move(_currentLocation!, 16);
+      _mapController.move(_currentLocation!, LocationConfig.compassZoom);
       
       // 地図の回転を北向き（0度）にリセット
       _mapController.rotate(0);
       
-      debugPrint('[MapScreen] 🧭 地図を現在地に移動し、北向きに調整しました');
+      LocationConfig.log(LocationConfig.mapScreenTag, '🧭 地図を現在地に移動し、北向きに調整しました');
     } else {
-      debugPrint('[MapScreen] ⚠️ 現在地が取得されていません');
+      LocationConfig.log(LocationConfig.mapScreenTag, '⚠️ 現在地が取得されていません');
       // 現在地が不明な場合はデフォルト位置（横浜駅）に移動
-      _mapController.move(LatLng(35.4658, 139.6201), 15);
+      _mapController.move(LocationConfig.defaultLocation, LocationConfig.defaultZoom);
       _mapController.rotate(0);
     }
   }
@@ -145,11 +147,10 @@ class _MapScreenState extends State<MapScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter:
-                  _currentLocation ?? LatLng(35.4658, 139.6201), // 横浜駅
-              initialZoom: 15,
-              maxZoom: 18,
-              minZoom: 10,
+              initialCenter: _currentLocation ?? LocationConfig.defaultLocation,
+              initialZoom: LocationConfig.defaultZoom,
+              maxZoom: LocationConfig.maxZoom,
+              minZoom: LocationConfig.minZoom,
               onPositionChanged: _onPositionChanged,
             ),
             children: [
@@ -183,7 +184,20 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               // アトリビューション（レイヤーとして配置）
               RichAttributionWidget(
-                attributions: [TextSourceAttribution('StadiaMaps')],
+                attributions: [
+                  TextSourceAttribution('StadiaMaps'),
+                  // TextSourceAttribution(
+                  //   "Stamen Design",
+                  //   onTap: () => launchUrl(Uri.parse("https://stamen.com/")),
+                  //   prependCopyright: true,
+                  // ),
+                  TextSourceAttribution(
+                    "OpenStreetMap",
+                    onTap: () =>
+                        launchUrl(Uri.parse("https://www.openstreetmap.org/copyright")),
+                    prependCopyright: true,
+                  ),
+                ],
               ),
             ],
           ),
