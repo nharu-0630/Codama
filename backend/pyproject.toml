@@ -13,6 +13,7 @@ dependencies = [
     "pygeohash>=3.2.0",
     "googlemaps>=4.10.0",
     "shapely>=2.1.2",
+    "openai>=2.6.1",
 ]
 
 [dependency-groups]
