@@ -11,6 +11,7 @@ class Settings:
     """Application settings."""
 
     GEO_HASH_PRECISION: int = int(os.environ.get("GEO_HASH_PRECISION", 7))
+    GEO_DELTA_METERS: int = int(os.environ.get("GEO_DELTA_METERS", 100))
     SUPABASE_URL: str = os.environ.get("SUPABASE_URL", "http://127.0.0.1:54321")
     SUPABASE_KEY: str = os.environ.get("SUPABASE_KEY", "")
     GOOGLE_MAPS_API_KEY: str = os.environ.get("GOOGLE_MAPS_API_KEY", "")

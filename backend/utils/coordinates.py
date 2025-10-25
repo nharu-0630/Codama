@@ -3,15 +3,18 @@
 import math
 import random
 
+from config.settings import settings
+
 
 def add_random_offset(
     lat: float,
     lon: float,
-    max_offset_meters: float = 100.0,
 ) -> tuple[float, float]:
     """Add a random offset to the given latitude and longitude for privacy."""
-    lat_offset_deg = max_offset_meters / 111000.0
-    lon_offset_deg = max_offset_meters / (111000.0 * math.cos(math.radians(lat)))
+    lat_offset_deg = settings.GEO_DELTA_METERS / 111000.0
+    lon_offset_deg = settings.GEO_DELTA_METERS / (
+        111000.0 * math.cos(math.radians(lat))
+    )
     angle = random.uniform(0, 2 * math.pi)
     distance = random.uniform(0, 1) ** 0.5
 
