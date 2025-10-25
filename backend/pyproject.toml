@@ -4,4 +4,17 @@ version = "0.1.0"
 description = ""
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "supabase>=2.22.2",
+    "python-dotenv>=1.1.1",
+    "pygeohash>=3.2.0",
+    "googlemaps>=4.10.0",
+    "shapely>=2.1.2",
+    "openai>=2.6.1",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.14.2"]
