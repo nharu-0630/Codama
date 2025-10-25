@@ -49,6 +49,12 @@ class CurrentResponse(BaseModel):
     cell: Cell
 
 
+class CreatePostRequest(BaseModel):
+    content: str
+    lat: float
+    lon: float
+
+
 class CreatePostResponse(BaseModel):
     success: bool
     user_post_id: int

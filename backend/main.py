@@ -8,10 +8,12 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from shapely import wkb
 from supabase import create_client
+from supabase_auth import User
 
 from model import (
     Area,
     Cell,
+    CreatePostRequest,
     CreatePostResponse,
     CurrentResponse,
     Post,
@@ -61,7 +63,7 @@ def parse_point_geometry(wkt: str) -> tuple[float, float]:
     raise ValueError(f"Unknown geometry format: {wkt}")
 
 
-async def get_current_user(authorization: str = Header(...)):
+async def get_current_user(authorization: str = Header(...)) -> User:
     try:
         if not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid authorization header")
@@ -202,14 +204,12 @@ async def get_posts(
 
 @app.post("/posts", tags=["posts"], response_model=CreatePostResponse)
 async def create_post(
-    content: str,
-    lat: float,
-    lon: float,
+    request: CreatePostRequest,
     authorization: str = Header(...),
 ):
-    await get_current_user(authorization)
+    user = await get_current_user(authorization)
 
-    geo_hash = gh.encode(lat, lon, precision=GEO_HASH_PRECISION)
+    geo_hash = gh.encode(request.lat, request.lon, precision=GEO_HASH_PRECISION)
     cell_response = (
         supabase.from_("cells").select("*").like("geo_hash", f"{geo_hash}%").execute()
     )
@@ -217,8 +217,9 @@ async def create_post(
         raise HTTPException(status_code=404, detail="Cell not found")
     cell_id = int(cell_response.data[0]["id"])  # type: ignore
     new_post: dict[str, Any] = {
-        "content": content,
+        "content": request.content,
         "cell_id": cell_id,
+        "user_uuid": user.id,
     }
     created_post = supabase.from_("user_posts").insert(new_post).execute()
     if not created_post.data:
