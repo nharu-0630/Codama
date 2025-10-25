@@ -1,246 +1,245 @@
-# 地図実装
+# 位置情報機能実装タスク
 
 ## 概要
-StadiaMapsとflutter_mapを使用した地図機能の実装
 
-## 実装手順
+Kodama空間SNSアプリケーションにおける位置情報機能の段階的実装ガイドです。現在地の取得・表示、ユーザー位置のトラッキング、方向表示機能を含む完全な位置情報システムを構築します。
 
-### 1. パッケージの追加
-**ファイル**: `frontend/pubspec.yaml`
+## 実装済み機能
 
-以下の依存関係を追加:
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  flutter_map: ^5.0.0
-  latlong2: ^0.9.0
-  url_launcher: ^6.1.6
-  flutter_dotenv: ^5.1.0
-```
+✅ **基本セットアップ**
+- `geolocator: ^10.1.0` パッケージ追加済み
+- `flutter_map_location_marker: ^10.1.0` パッケージ追加済み
+- Android位置情報権限設定完了（AndroidManifest.xml）
+- iOS位置情報権限設定完了（Info.plist）
+- LocationService基本実装完了
 
-**依存関係の取得**:
-```bash
-cd frontend
-flutter pub get
-```
+## フェーズ1: 基本位置情報機能
 
-### 2. ディレクトリ構造
-以下のファイルを作成:
+### タスク1.1: LocationServiceの拡張
+**状態**: 基本実装完了、拡張が必要
 
-```
-lib/
-   main.dart                      # エントリーポイント
-   app/
-      app.dart                   # アプリケーション
-   features/
-       map/
-           presentation/
-              map_screen.dart    # 地図画面
-           widgets/
-               map_attribution.dart # 地図のクレジット表示
-```
-
-### 3. 環境変数の設定
-
-#### 方法1: .envファイルを使用（推奨）
-
-**1. .envファイルの作成**
-`frontend/.env`:
-```
-STADIA_API_KEY=あなたのAPIキー
-```
-
-**2. .gitignoreに追加**
-`frontend/.gitignore`:
-```
-.env
-```
-
-**3. pubspec.yamlに.envを含める**
-`frontend/pubspec.yaml`:
-```yaml
-flutter:
-  assets:
-    - .env
-```
-
-### 4. メインファイルの実装
-**ファイル**: `lib/main.dart`
-
+**実装内容**:
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'app/app.dart';
-
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
-  runApp(const KodamaMapApp());
+// lib/features/location/services/location_service.dart
+class LocationService {
+  // 実装済み：基本的な現在地取得
+  // 実装済み：権限チェック
+  // 実装済み：横浜駅フォールバック
+  
+  // 追加実装予定：
+  - リアルタイム位置ストリーム最適化
+  - バッテリー最適化設定
+  - 位置精度レベルの動的調整
+  - エラーハンドリングの詳細化
 }
 ```
 
-### 5. アプリケーションの実装
-**ファイル**: `lib/app/app.dart`
+### タスク1.2: 地図画面への位置情報統合
+**状態**: 部分実装、完全統合が必要
 
+**実装コンポーネント**:
+- `CurrentLocationLayer` の実装
+- リアルタイム位置更新
+- 現在地中心ボタン
+- 位置マーカーのカスタマイズ
+
+**技術仕様**:
 ```dart
-import 'package:flutter/material.dart';
-import '../features/map/presentation/map_screen.dart';
+CurrentLocationLayer(
+  positionStream: locationService.getLocationStream(),
+  style: LocationMarkerStyle(
+    marker: CustomLocationMarker(),
+    markerSize: Size(24, 24),
+    accuracyCircleColor: Colors.blue.withOpacity(0.1),
+  ),
+)
+```
 
-class KodamaMapApp extends StatelessWidget {
-  const KodamaMapApp({super.key});
+## フェーズ2: ヘディング・方向機能
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Kodama Map',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true),
-      home: const MapScreen(),
-    );
-  }
+### タスク2.1: ヘディングアップ・ノースアップ機能
+**状態**: 未実装
+
+**必要パッケージ**:
+- `flutter_map_location_marker` の heading 機能活用
+- デバイスの方向センサー統合
+
+**実装機能**:
+1. **ノースアップモード**: 地図が常に北を上に表示
+2. **ヘディングアップモード**: 地図がユーザーの向いている方向を上に表示
+3. **モード切り替えボタン**: GoogleMap風のUI
+
+**実装例**:
+```dart
+// 方向モードの状態管理
+enum MapOrientation { north, heading }
+
+// モード切り替え実装
+void _toggleOrientation() {
+  setState(() {
+    _mapOrientation = _mapOrientation == MapOrientation.north 
+        ? MapOrientation.heading 
+        : MapOrientation.north;
+  });
+}
+
+// ヘディング対応のCurrentLocationLayer
+CurrentLocationLayer(
+  followOnLocationUpdate: FollowOnLocationUpdate.always,
+  turnOnHeadingUpdate: _mapOrientation == MapOrientation.heading 
+      ? TurnOnHeadingUpdate.always 
+      : TurnOnHeadingUpdate.never,
+)
+```
+
+### タスク2.2: 方向表示UI実装
+**状態**: 未実装
+
+**実装コンポーネント**:
+1. **コンパスウィジェット**: 現在の向きを表示
+2. **方向切り替えボタン**: ヘディング⇔ノース切り替え
+3. **ステータス表示**: 現在のモードを視覚的に表示
+
+**UIレイアウト**:
+```dart
+// 右下に配置する制御ボタン群
+Positioned(
+  bottom: 16,
+  right: 16,
+  child: Column(
+    children: [
+      // コンパスボタン（ヘディング表示）
+      FloatingActionButton(
+        mini: true,
+        onPressed: _toggleOrientation,
+        child: Icon(_mapOrientation == MapOrientation.heading 
+            ? Icons.explore 
+            : Icons.explore_off),
+      ),
+      SizedBox(height: 8),
+      // 現在地ボタン
+      FloatingActionButton(
+        onPressed: _centerOnCurrentLocation,
+        child: Icon(Icons.my_location),
+      ),
+    ],
+  ),
+)
+```
+
+## フェーズ3: 位置連動機能
+
+### タスク3.1: 位置ベース投稿システム
+**状態**: 未実装
+
+**実装内容**:
+- 投稿時の現在地自動取得
+- 位置精度に基づくgeohash生成
+- 近隣投稿の動的取得
+
+### タスク3.2: 友達システムとの連携
+**状態**: 未実装（design.mdで定義済み）
+
+**実装内容**:
+- 15分以内の共同位置検出
+- 一時的友達関係の生成
+- 友達投稿の優先表示
+
+## フェーズ4: パフォーマンス最適化
+
+### タスク4.1: 位置更新の最適化
+**実装内容**:
+```dart
+LocationSettings(
+  accuracy: LocationAccuracy.high,
+  distanceFilter: 10, // 10m移動で更新
+  timeLimit: Duration(seconds: 5),
+)
+```
+
+### タスク4.2: バッテリー最適化
+**実装内容**:
+- アプリがバックグラウンド時の位置更新頻度調整
+- 不要な位置取得の停止機能
+- 省電力モードでの動作最適化
+
+## 技術的考慮事項
+
+### 依存関係の互換性
+- `flutter_map: ^5.0.0` ← 現在使用中
+- `flutter_map_location_marker: ^10.1.0` ← 新規追加
+- 互換性確認済み、バージョン競合なし
+
+### 権限処理フロー
+```dart
+// 権限チェックフロー
+1. LocationService.isLocationServiceEnabled()
+2. Geolocator.checkPermission()
+3. 必要に応じてGeolocator.requestPermission()
+4. 拒否時は横浜駅(35.4658, 139.6201)にフォールバック
+```
+
+### エラーハンドリング戦略
+- **位置サービス無効**: デフォルト位置（横浜駅）を使用
+- **権限拒否**: ユーザーに説明ダイアログ表示後、デフォルト位置使用
+- **タイムアウト**: 5秒でタイムアウト、キャッシュ位置またはデフォルト位置使用
+- **不正確な位置**: 精度が100m以上の場合は再取得
+
+### 位置精度レベル
+```dart
+// ズームレベルに応じた精度調整
+double getAccuracyForZoom(double zoom) {
+  if (zoom >= 16) return LocationAccuracy.best;      // ~5m
+  if (zoom >= 14) return LocationAccuracy.high;      // ~10m
+  if (zoom >= 12) return LocationAccuracy.medium;    // ~100m
+  return LocationAccuracy.low;                        // ~1km
 }
 ```
 
-### 6. 地図画面の実装
-**ファイル**: `lib/features/map/presentation/map_screen.dart`
+## テスト戦略
 
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../widgets/map_attribution.dart';
+### 単体テスト
+- LocationService の各メソッド
+- 権限処理ロジック
+- エラーハンドリング
 
-const _styleUrl = "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
+### 統合テスト
+- 地図表示と位置マーカーの連携
+- リアルタイム位置更新
+- 方向切り替え機能
 
-class MapScreen extends StatelessWidget {
-  const MapScreen({super.key});
+### デバイステスト
+- iOS/Android実機での位置精度検証
+- 方向センサーの動作確認
+- バッテリー消費測定
 
-  @override
-  Widget build(BuildContext context) {
-    final apiKey = dotenv.env['STADIA_API_KEY'] ?? '';
-    return Scaffold(
-      body: FlutterMap(
-        options: const MapOptions(
-          center: LatLng(35.4658, 139.6201), // 横浜駅
-          zoom: 15,
-          keepAlive: true,
-          maxZoom: 18,
-          minZoom: 10,
-        ),
-        nonRotatedChildren: const [MapAttribution()],
-        children: [
-          TileLayer(
-            urlTemplate: "$_styleUrl?api_key={api_key}",
-            additionalOptions: {"api_key": apiKey},
-            maxZoom: 20,
-            maxNativeZoom: 20,
-          ),
-        ],
-      ),
-    );
-  }
-}
-```
+## 実装優先順位
 
-### 7. 地図のクレジット表示の実装
-**ファイル**: `lib/features/map/widgets/map_attribution.dart`
+### 高優先度（必須）
+1. LocationService の完全実装
+2. CurrentLocationLayer の地図統合
+3. 現在地中心ボタンの実装
 
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:url_launcher/url_launcher.dart';
+### 中優先度（推奨）
+1. ヘディングアップ・ノースアップ機能
+2. 方向表示UI
+3. パフォーマンス最適化
 
-class MapAttribution extends StatelessWidget {
-  const MapAttribution({super.key});
+### 低優先度（将来）
+1. 詳細な位置分析機能
+2. 位置履歴の保存
+3. オフライン位置キャッシュ
 
-  @override
-  Widget build(BuildContext context) {
-    return RichAttributionWidget(attributions: [
-      TextSourceAttribution(
-        "Stadia Maps",
-        onTap: () => launchUrl(Uri.parse("https://stadiamaps.com/")),
-        prependCopyright: true,
-      ),
-      TextSourceAttribution(
-        "OpenMapTiles",
-        onTap: () => launchUrl(Uri.parse("https://openmaptiles.org/")),
-        prependCopyright: true,
-      ),
-      TextSourceAttribution(
-        "OpenStreetMap",
-        onTap: () => launchUrl(
-          Uri.parse("https://www.openstreetmap.org/copyright"),
-        ),
-        prependCopyright: true,
-      ),
-    ]);
-  }
-}
-```
+## 注意事項
 
-### 8. StadiaMaps APIキーの取得
-1. [StadiaMaps](https://stadiamaps.com/)でアカウントを作成
-2. ダッシュボードでAPIキーを作成
-3. APIキーを環境変数として設定
+### プライバシー考慮
+- 位置データの最小限取得
+- ローカルストレージのみ使用（クラウド保存禁止）
+- ユーザーの明示的同意後のみ位置取得
 
-### 9. アプリケーションの起動
+### パフォーマンス考慮
+- 位置更新頻度の適切な制限
+- 不要な地図再描画の防止
+- メモリリークの防止
 
-**開発環境での起動**:
-
-#### .envファイルを使用している場合:
-```bash
-# 通常の起動
-flutter run
-
-# iOS シミュレータで起動
-flutter run -d ios
-
-# Androidで起動
-flutter run -d android
-```
-
-#### dart-defineを使用する場合:
-```bash
-# APIキーを環境変数として指定して起動
-flutter run --dart-define=STADIA_API_KEY=あなたのAPIキー
-
-# iOS シミュレータで起動
-flutter run -d ios --dart-define=STADIA_API_KEY=あなたのAPIキー
-
-# Androidで起動
-flutter run -d android --dart-define=STADIA_API_KEY=あなたのAPIキー
-```
-
-### 10. 追加機能の実装
-- [ ] 地図スタイルの切り替え
-- [ ] 現在位置の表示
-- [ ] マーカー/ピンの追加
-- [ ] ルート検索機能の追加
-- [ ] オフラインマップのサポート
-- [ ] ユーザー位置情報の権限管理
-
-### 11. トラブルシューティング
-
-#### 地図が表示されない場合
-1. APIキーが正しく設定されているか確認
-2. インターネット接続を確認
-3. `flutter clean && flutter pub get`を実行
-
-#### ビルドエラーの場合
-1. Flutter SDKのバージョンが3.0以上であることを確認
-2. パッケージのバージョンを確認
-3. iOS/Androidの最小サポートバージョンを確認
-
-## 次の実装
-地図表示の後に実装する機能:
-1. 現在位置の取得と表示
-2. マーカー機能の実装
-3. 検索機能との統合
-4. ルート案内機能
-
-## 参考
-- [StadiaMaps Flutter Map Documentation](https://docs.stadiamaps.com/native-multiplatform/flutter-map/)
-- [flutter_map Documentation](https://docs.fleaflet.dev/)
-- [設計書](design.md)
+このタスク文書は、位置情報機能の段階的実装を可能にし、各フェーズでの検証と最適化を確実に行うためのガイドラインとなります。
