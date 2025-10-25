@@ -38,7 +38,7 @@ jobs:
         id: build-image
         uses: docker/build-push-action@v6
         with:
-          context: "./src/" # アプリケーションのソースコードが配置されているディレクトリ
+          context: "backend/"
           push: true
           tags: |
             asia-northeast1-docker.pkg.dev/codama-476202/codama/backend:${{ github.sha }}
