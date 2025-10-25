@@ -1,72 +1,137 @@
-"""Post repository for data access."""
-
-from typing import Any
+from typing import Any, cast
+from uuid import UUID
 
 from config.database import supabase
-from postgrest.base_request_builder import APIResponse
+from schemas.db import DBLLMPost, DBUserPost
 
 
-def get_post_raw_by_uuid(post_uuid: str) -> dict[str, Any] | None:
-    """Get raw post data by UUID from Supabase.
-
-    Args:
-        post_uuid: UUID of the post to retrieve
-
-    Returns:
-        Raw post data if found, None otherwise
-    """
-    post_response: APIResponse[Any] = (
+def get_user_post_by_uuid(post_uuid: str) -> DBUserPost | None:
+    """UUIDでユーザー投稿を取得"""
+    # UUIDで投稿を検索
+    post_response = (
         supabase.from_("user_posts")
-        .select("*, llm_posts(uuid, content, location, created_at)")
+        .select("*")
         .eq("uuid", post_uuid)
         .single()
         .execute()
     )
-
     if not post_response.data:
         return None
+    # 取得したデータをDBUserPostモデルに変換
+    data = cast(dict[str, Any], post_response.data)
+    return DBUserPost(**data)
 
-    return post_response.data  # type: ignore
+
+def get_llm_posts_by_user_post_uuid(user_post_uuid: str) -> list[DBLLMPost]:
+    """ユーザー投稿のUUIDに紐づくLLM返信の一覧を取得"""
+    # ユーザー投稿UUIDで検索
+    response = (
+        supabase.from_("llm_posts")
+        .select("*")
+        .eq("user_post_uuid", user_post_uuid)
+        .execute()
+    )
+    # 取得したデータをDBLLMPostモデルのリストに変換
+    data = cast(list[dict[str, Any]], response.data)
+    return [DBLLMPost(**item) for item in data]
 
 
-def get_posts_raw_by_location(geo_hash: str) -> list[dict[str, Any]]:
-    """Get raw posts data by location using geohash.
-
-    Args:
-        geo_hash: Geohash string for location matching
-
-    Returns:
-        List of raw post data
-    """
-    posts: APIResponse[Any] = (
+def get_user_posts_by_location(geo_hash: str) -> list[DBUserPost]:
+    """ジオハッシュで指定した位置の投稿一覧を取得"""
+    # ジオハッシュの前方一致で検索（セルテーブルをinner join）
+    posts = (
         supabase.from_("user_posts")
-        .select(
-            "*, cells!inner(id, geo_hash, location), llm_posts(uuid, content, location, created_at)"
-        )
+        .select("*, cells!inner(id, geo_hash)")
         .like("cells.geo_hash", f"{geo_hash}%")
         .execute()
     )
+    # 取得したデータをDBUserPostモデルのリストに変換
+    data = cast(list[dict[str, Any]], posts.data)
+    return [DBUserPost(**item) for item in data]
 
-    return posts.data  # type: ignore
 
-
-def get_posts_raw_by_uuids(post_uuids: list[str]) -> list[dict[str, Any]]:
-    """Get raw posts data by their UUIDs.
-
-    Args:
-        post_uuids: List of post UUIDs to retrieve
-
-    Returns:
-        List of raw post data
-    """
+def get_user_posts_by_uuids(post_uuids: list[str]) -> list[DBUserPost]:
+    """UUIDのリストで複数のユーザー投稿を取得"""
     if not post_uuids:
         return []
+    # UUIDのリストで検索
+    posts = supabase.from_("user_posts").select("*").in_("uuid", post_uuids).execute()
+    # 取得したデータをDBUserPostモデルのリストに変換
+    data = cast(list[dict[str, Any]], posts.data)
+    return [DBUserPost(**item) for item in data]
 
-    posts: APIResponse[Any] = (
+
+def create_user_post(
+    content: str, cell_id: int, user_uuid: UUID, location_wkt: str
+) -> DBUserPost:
+    """新しいユーザー投稿を作成"""
+    # 投稿データを構築
+    post_data: dict[str, Any] = {
+        "content": content,
+        "cell_id": cell_id,
+        "user_uuid": str(user_uuid),
+        "location": location_wkt,
+    }
+    # データベースに投稿を挿入
+    response = supabase.from_("user_posts").insert(post_data).execute()
+    # 作成された投稿をDBUserPostモデルに変換して返却
+    data = cast(list[dict[str, Any]], response.data)
+    return DBUserPost(**data[0])
+
+
+def get_user_posts_by_cell_ids_after_date(
+    cell_ids: list[int], after_date: str
+) -> list[DBUserPost]:
+    """指定日時以降のセルIDに紐づく投稿を取得"""
+    if not cell_ids:
+        return []
+
+    # セルIDと作成日時でフィルタリング
+    posts = (
         supabase.from_("user_posts")
-        .select("*, llm_posts(uuid, content, location, created_at)")
-        .in_("uuid", post_uuids)
+        .select("*")
+        .in_("cell_id", cell_ids)
+        .filter("created_at", "gt", after_date)
         .execute()
     )
 
-    return posts.data  # type: ignore
+    # 取得したデータをDBUserPostモデルのリストに変換
+    data = cast(list[dict[str, Any]], posts.data)
+    return [DBUserPost(**item) for item in data]
+
+
+def get_recent_user_posts_by_cell_ids(
+    cell_ids: list[int], limit: int = 5
+) -> list[DBUserPost]:
+    """セルIDに紐づく最近の投稿を取得"""
+    if not cell_ids:
+        return []
+
+    # セルIDでフィルタして作成日時の降順で取得
+    posts = (
+        supabase.from_("user_posts")
+        .select("*")
+        .in_("cell_id", cell_ids)
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+
+    # 取得したデータをDBUserPostモデルのリストに変換
+    data = cast(list[dict[str, Any]], posts.data)
+    return [DBUserPost(**item) for item in data]
+
+
+def create_llm_post(content: str, user_post_uuid: UUID, location_wkt: str) -> DBLLMPost:
+    """新しいLLM返信を作成"""
+    # 返信データを構築
+    post_data: dict[str, Any] = {
+        "content": content,
+        "user_post_uuid": str(user_post_uuid),
+        "location": location_wkt,
+    }
+    # データベースに返信を挿入
+    response = supabase.from_("llm_posts").insert(post_data).execute()
+    # 作成された返信をDBLLMPostモデルに変換して返却
+    data = cast(list[dict[str, Any]], response.data)
+    return DBLLMPost(**data[0])

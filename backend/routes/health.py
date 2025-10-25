@@ -1,5 +1,3 @@
-"""Health check routes."""
-
 from fastapi import APIRouter
 
 router = APIRouter(tags=["health"])
@@ -7,5 +5,5 @@ router = APIRouter(tags=["health"])
 
 @router.get("/")
 async def health():
-    """Health check endpoint."""
+    """ヘルスチェック"""
     return {"status": "ok"}
