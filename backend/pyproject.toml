@@ -1,18 +1,16 @@
 [project]
 name = "codama"
 version = "0.1.0"
-description = "Location-based SNS API"
+description = ""
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
     "pydantic>=2.9.0",
+    "supabase>=2.22.2",
+    "python-dotenv>=1.1.1",
 ]
 
 [dependency-groups]
-dev = [
-    "pytest>=8.4.2",
-    "pytest-cov>=7.0.0",
-    "ruff>=0.14.2",
-]
+dev = ["ruff>=0.14.2"]

@@ -1,1 +1,0 @@
-"""Codama API application."""

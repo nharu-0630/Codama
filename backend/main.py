@@ -1,35 +1,41 @@
-"""
-Codama API - Location-based SNS
-"""
+import os
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from supabase import Client, create_client
 
-from app.routers import posts
+load_dotenv()
 
-app = FastAPI(
-    title="Codama API",
-    description="A location-based social networking service API",
-    version="0.1.0",
-)
+url: str = os.environ.get("SUPABASE_URL", "http://127.0.0.1:54321")
+key: str = os.environ.get("SUPABASE_KEY", "")
+supabase: Client = create_client(url, key)
 
-# CORS設定
+app = FastAPI(title="codama backend")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: 本番環境では適切なオリジンを設定
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ルーターの登録
-app.include_router(posts.router)
-
 
 @app.get("/", tags=["health"])
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "ok", "message": "Codama API is running"}
+async def health():
+    return {"status": "ok"}
+
+
+@app.get("/areas", tags=["areas"])
+async def get_areas():
+    areas = supabase.from_("areas").select("*").execute()
+    return areas
+
+
+@app.get("/posts", tags=["posts"])
+async def get_posts():
+    posts = supabase.from_("user_posts").select("*").execute()
+    return posts
 
 
 if __name__ == "__main__":
