@@ -1,0 +1,44 @@
+name: Deploy FastAPI to Cloud Run
+
+# main ブランチに push されたら実行
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    steps:
+      - name: 1. Checkout code
+        uses: actions/checkout@v4
+
+      - name: 2. Authenticate to GCP
+        id: auth
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+
+      - name: 3. Set up Cloud SDK (gcloud command)
+        uses: "google-github-actions/setup-gcloud@v2"
+
+      - name: 4. Build and Push Docker image
+        run: |
+          gcloud builds submit . \
+            --tag ${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REGISTRY }}/${{ secrets.SERVICE_NAME }}:${{ github.sha }} \
+            --project=${{ secrets.GCP_PROJECT_ID }}
+
+      - name: 5. Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ secrets.SERVICE_NAME }} \
+            --image ${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REGISTRY }}/${{ secrets.SERVICE_NAME }}:${{ github.sha }} \
+            --region ${{ secrets.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --set-env-vars=DATABASE_URL=${{ secrets.DATABASE_URL }}
