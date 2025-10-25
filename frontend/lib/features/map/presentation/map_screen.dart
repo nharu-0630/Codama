@@ -17,6 +17,8 @@ import '../../post/services/bubble_manager.dart';
 import '../../post/services/post_service.dart';
 import '../../post/widgets/bubble_widget.dart';
 import '../../post/widgets/create_post_dialog.dart';
+import '../../auth/services/auth_service.dart';
+import '../../auth/widgets/signup_modal.dart';
 
 // 水彩画風　stamen_watercolor
 const _styleUrl =
@@ -39,6 +41,7 @@ class _MapScreenState extends State<MapScreen> {
   final LiveLocationController _liveLocationController =
       LiveLocationController();
   final CellTrackingService _cellTrackingService = CellTrackingService();
+  final AuthService _authService = AuthService();
   LatLng? _currentLocation;
   String _locationStatus = '位置情報未取得';
   double? _lastZoomLevel;
@@ -67,9 +70,8 @@ class _MapScreenState extends State<MapScreen> {
     _checkInitialLocation();
     _startLocationTracking();
 
-    // サービス初期化とデモデータ追加
-    _initializePostService();
-    _initializeCellTracking();
+    // 認証チェックとサービス初期化
+    _checkAuthenticationAndInitialize();
   }
 
   @override
@@ -109,6 +111,34 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  /// 認証チェックとサービス初期化
+  Future<void> _checkAuthenticationAndInitialize() async {
+    try {
+      // 保存されたトークンを読み込み
+      await _authService.loadStoredTokens();
+      
+      // 認証されていない場合はサインアップモーダルを表示
+      if (!_authService.isAuthenticated) {
+        LocationConfig.log(LocationConfig.mapScreenTag, '🔒 認証が必要です、サインアップモーダルを表示');
+        _showSignupModal();
+        return;
+      }
+      
+      // 認証済みの場合はサービスを初期化
+      await _initializeServices();
+      
+    } catch (e) {
+      LocationConfig.log(LocationConfig.mapScreenTag, '❌ 認証チェックエラー: $e');
+      _showSignupModal();
+    }
+  }
+
+  /// サービス初期化（認証後）
+  Future<void> _initializeServices() async {
+    await _initializePostService();
+    await _initializeCellTracking();
+  }
+
   /// セル追跡サービスを初期化
   Future<void> _initializeCellTracking() async {
     try {
@@ -133,26 +163,51 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  /// サインアップモーダルを表示
+  void _showSignupModal() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => SignupModal(
+        onSuccess: () async {
+          LocationConfig.log(LocationConfig.mapScreenTag, '✅ サインアップ成功、サービスを初期化');
+          await _initializeServices();
+        },
+      ),
+    );
+  }
 
-  /// 特定座標に投稿を作成
+
+  /// 特定座標に投稿を作成（楽観的UI更新）
   Future<void> createPostAtLocation({
     required double lat,
     required double lng,
     required String text,
   }) async {
     try {
-      await _postService.createPost(lat: lat, lng: lng, text: text);
-
-      // 投稿作成後、現在の位置情報でセル変更を再チェック
-      // これにより新しい投稿も含めて最新の投稿リストが取得される
-      if (_currentLocation != null) {
-        await _cellTrackingService.onLocationChanged(_currentLocation!);
-      }
+      // 認証が必要な処理として実行（自動リフレッシュ付き）
+      await _authService.withAuth(() async {
+        await _cellTrackingService.createPostOptimistically(
+          lat: lat,
+          lng: lng,
+          text: text,
+        );
+      });
 
       LocationConfig.log(LocationConfig.mapScreenTag, '✅ 投稿作成成功: $text');
+    } on AuthenticationRequiredException catch (e) {
+      LocationConfig.log(LocationConfig.mapScreenTag, '🔒 認証エラー、サインアップモーダルを表示: $e');
+      _showSignupModal();
     } catch (e) {
       LocationConfig.log(LocationConfig.mapScreenTag, '❌ 投稿作成エラー: $e');
-      rethrow; // エラーをUI層に伝播
+      
+      // 認証関連のエラーの場合はサインアップモーダルを表示
+      if (e.toString().contains('認証') || e.toString().contains('authorization')) {
+        _showSignupModal();
+      } else {
+        // その他のエラーは再スロー
+        rethrow;
+      }
     }
   }
 
@@ -245,18 +300,43 @@ class _MapScreenState extends State<MapScreen> {
 
   /// 投稿詳細を表示
   void _showPostDetail(Post post) {
+    final isLandMemory = post.kind == PostKind.land;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(post.kind == PostKind.user ? 'ユーザー投稿' : '土地の記憶'),
+        title: Row(
+          children: [
+            if (isLandMemory) ...[
+              Icon(
+                Icons.auto_awesome,
+                color: Colors.purple.shade400,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              isLandMemory ? '土地の記憶' : 'ユーザー投稿',
+              style: TextStyle(
+                color: isLandMemory ? Colors.purple.shade700 : Colors.blue.shade700,
+              ),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(post.text),
+            Text(
+              post.text,
+              style: TextStyle(
+                fontStyle: isLandMemory ? FontStyle.italic : FontStyle.normal,
+                color: isLandMemory ? Colors.purple.shade600 : Colors.black87,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
-              '投稿時刻: ${post.createdAt.toString().substring(0, 19)}',
+              '${isLandMemory ? "出現" : "投稿"}時刻: ${post.createdAt.toString().substring(0, 19)}',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],

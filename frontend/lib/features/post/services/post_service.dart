@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/post.dart';
+import '../models/create_post_response.dart';
 import '../../auth/services/auth_service.dart';
 
 /// 投稿サービス
@@ -20,13 +21,15 @@ class PostService {
   }
 
   /// 投稿作成
-  Future<Post> createPost({
+  Future<CreatePostResponse> createPost({
     required double lat,
     required double lng,
     required String text,
     String? userId,
   }) async {
-    return _createPostApi(lat: lat, lng: lng, text: text, userId: userId);
+    return await _authService.withAuth(() => 
+      _createPostApi(lat: lat, lng: lng, text: text, userId: userId)
+    );
   }
 
   /// 投稿取得
@@ -36,7 +39,9 @@ class PostService {
 
   /// 位置に基づく投稿取得
   Future<List<Post>> getPostsByLocation(double lat, double lon) async {
-    return _getPostsByLocationApi(lat, lon);
+    return await _authService.withAuth(() => 
+      _getPostsByLocationApi(lat, lon)
+    );
   }
 
   /// 投稿削除
@@ -48,33 +53,70 @@ class PostService {
   // API実装
   // =============
 
-  Future<Post> _createPostApi({
+  Future<CreatePostResponse> _createPostApi({
     required double lat,
     required double lng,
     required String text,
     String? userId,
   }) async {
+    // 認証状態を確認
+    if (!_authService.isAuthenticated) {
+      print('投稿API失敗 - 認証されていません');
+      throw Exception('認証が必要です。再度サインアップしてください。');
+    }
+
     final uri = Uri.parse('$_baseUrl/posts');
     
     final requestBody = {
-      'lat': lat,
-      'lng': lng,
       'content': text,
-      'kind': 'user',
-      if (userId != null) 'user_id': userId,
+      'lat': lat,
+      'lon': lng,
     };
+
+    final headers = _authService.getAuthHeaders();
+    print('投稿API - リクエストヘッダー: $headers');
+    print('投稿API - 認証状態: isAuthenticated=${_authService.isAuthenticated}, token=${_authService.accessToken?.substring(0, 20)}...');
 
     final response = await http.post(
       uri,
-      headers: _authService.getAuthHeaders(),
+      headers: headers,
       body: json.encode(requestBody),
     );
 
-    if (response.statusCode == 201) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print('=== 投稿作成成功 - APIレスポンス ===');
+      print('ステータスコード: ${response.statusCode}');
+      print('レスポンスボディ（RAW）:');
+      print(response.body);
+      print('=====================================');
+
       final responseData = json.decode(response.body) as Map<String, dynamic>;
-      return _parsePostFromApi(responseData);
+
+      print('パース後のデータ構造:');
+      print('post: ${responseData['post']}');
+      print('similar_posts: ${responseData['similar_posts']}');
+      print('=====================================');
+
+      return CreatePostResponse.fromJson(responseData);
     } else {
-      throw Exception('投稿の作成に失敗しました: ${response.statusCode}');
+      print('投稿API失敗 - ステータス: ${response.statusCode}');
+      print('投稿API失敗 - レスポンス: ${response.body}');
+      print('投稿API失敗 - リクエスト: ${json.encode(requestBody)}');
+      print('投稿API失敗 - ヘッダー: ${_authService.getAuthHeaders()}');
+      
+      if (response.statusCode == 422) {
+        final errorData = json.decode(response.body);
+        if (errorData['detail'] != null) {
+          final details = errorData['detail'] as List;
+          for (final detail in details) {
+            if (detail['loc'] != null && detail['loc'].contains('authorization')) {
+              throw Exception('認証エラー: Authorizationヘッダーが必要です。再度サインアップしてください。');
+            }
+          }
+        }
+      }
+      
+      throw Exception('投稿の作成に失敗しました: ${response.statusCode} - ${response.body}');
     }
   }
 
@@ -88,7 +130,7 @@ class PostService {
 
     if (response.statusCode == 200) {
       final List<dynamic> responseData = json.decode(response.body);
-      return responseData.map((data) => _parsePostFromApi(data)).toList();
+      return responseData.map((data) => Post.fromApiResponse(data)).toList();
     } else {
       throw Exception('投稿の取得に失敗しました: ${response.statusCode}');
     }
@@ -105,7 +147,7 @@ class PostService {
     if (response.statusCode == 200) {
       final responseData = json.decode(response.body);
       final List<dynamic> posts = responseData['posts'];
-      return posts.map((data) => _parsePostFromApiResponse(data)).toList();
+      return posts.map((data) => Post.fromApiResponse(data)).toList();
     } else {
       throw Exception('投稿の取得に失敗しました: ${response.statusCode}');
     }
@@ -124,32 +166,4 @@ class PostService {
     }
   }
 
-  Post _parsePostFromApi(Map<String, dynamic> data) {
-    return Post(
-      id: data['id'].toString(),
-      lat: (data['lat'] as num).toDouble(),
-      lng: (data['lng'] as num).toDouble(),
-      kind: data['kind'] == 'user' ? PostKind.user : PostKind.land,
-      text: data['content'] as String,
-      createdAt: DateTime.parse(data['created_at'] as String),
-      userId: data['user_id'] as String?,
-    );
-  }
-
-  Post _parsePostFromApiResponse(Map<String, dynamic> data) {
-    final location = data['location'] as List?;
-    return Post(
-      id: data['uuid'] as String,
-      lat: location != null && location.isNotEmpty && location[0] != null 
-          ? (location[0] as num).toDouble() 
-          : 0.0,
-      lng: location != null && location.length > 1 && location[1] != null 
-          ? (location[1] as num).toDouble() 
-          : 0.0,
-      kind: PostKind.user,
-      text: data['content'] as String,
-      createdAt: DateTime.parse(data['created_at'] as String),
-      userId: null,
-    );
-  }
 }
