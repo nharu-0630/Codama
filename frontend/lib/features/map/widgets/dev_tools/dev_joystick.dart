@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/constants/location_config.dart';
@@ -35,6 +37,7 @@ class _DevJoystickState extends State<DevJoystick> {
 
   Offset _knobOffset = Offset.zero;
   bool _isDragging = false;
+  Timer? _movementTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -95,11 +98,18 @@ class _DevJoystickState extends State<DevJoystick> {
     );
   }
 
+  @override
+  void dispose() {
+    _movementTimer?.cancel();
+    super.dispose();
+  }
+
   void _onPanStart(DragStartDetails details) {
     setState(() {
       _isDragging = true;
     });
     // LocationConfig.log(_logTag, '🎮 ジョイスティック操作開始');
+    _startMovementTimer();
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
@@ -119,9 +129,6 @@ class _DevJoystickState extends State<DevJoystick> {
     setState(() {
       _knobOffset = clampedOffset;
     });
-
-    // 座標変換して仮想位置を更新
-    _updateVirtualLocation(clampedOffset);
   }
 
   void _onPanEnd(DragEndDetails details) {
@@ -130,6 +137,7 @@ class _DevJoystickState extends State<DevJoystick> {
       _isDragging = false;
     });
     // LocationConfig.log(_logTag, '🎮 ジョイスティック操作終了');
+    _stopMovementTimer();
   }
 
   /// ジョイスティックオフセットを地図座標変換
@@ -158,5 +166,21 @@ class _DevJoystickState extends State<DevJoystick> {
 
     // コールバックで位置を通知
     widget.onLocationChange(newLocation);
+  }
+
+  /// 移動タイマーを開始
+  void _startMovementTimer() {
+    _movementTimer?.cancel();
+    _movementTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
+      if (_isDragging && _knobOffset != Offset.zero) {
+        _updateVirtualLocation(_knobOffset);
+      }
+    });
+  }
+
+  /// 移動タイマーを停止
+  void _stopMovementTimer() {
+    _movementTimer?.cancel();
+    _movementTimer = null;
   }
 }
