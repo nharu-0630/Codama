@@ -34,8 +34,8 @@ async def get_current(lat: float, lon: float):
             name=db_area.name,
         ),
         cell=APICell(
-            id=cell["id"],  # type: ignore
-            geo_hash=cell["geo_hash"],  # type: ignore
+            id=cell.id,
+            geo_hash=cell.geo_hash,
             location=location,
         ),
     )
