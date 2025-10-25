@@ -99,7 +99,7 @@ async def create_post(
     similar_post_uuids = [str(emb.user_post_uuid) for emb in db_similar_embeddings]
 
     # 類似投稿が少ない場合はAI返信を生成
-    generate_count = min(
+    generate_count = max(
         settings.CODAMA_MIN_COUNT - len(similar_post_uuids), settings.CODAMA_AI_COUNT
     )
     for _ in range(generate_count):
