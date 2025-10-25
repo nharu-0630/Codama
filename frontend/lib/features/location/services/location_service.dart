@@ -1,13 +1,25 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/constants/location_config.dart';
+import '../../map/widgets/dev_tools/dev_location_service.dart';
 
 class LocationService {
   static const String _logTag = LocationConfig.locationServiceTag;
+  final DevLocationService _devLocationService = DevLocationService();
 
   /// 現在地を取得する（詳細ログ付き）
   Future<LatLng> getCurrentLocation() async {
     LocationConfig.log(_logTag, '🌍 位置情報取得開始');
+
+    // 開発ツールが有効で仮想位置が設定されている場合は仮想位置を優先
+    if (DevLocationService.isDevToolsEnabled) {
+      final virtualLocation = _devLocationService.getVirtualLocation();
+      if (virtualLocation != null) {
+        LocationConfig.log(_logTag, '🎯 仮想位置を使用中: lat=${virtualLocation.latitude.toStringAsFixed(6)}, lng=${virtualLocation.longitude.toStringAsFixed(6)}');
+        return virtualLocation;
+      }
+      LocationConfig.log(_logTag, '🛠️ 開発ツール有効、GPS位置情報を取得します');
+    }
 
     try {
       // 1. 位置サービスが有効かチェック
@@ -76,6 +88,19 @@ class LocationService {
   Stream<LatLng> getLocationStream() {
     LocationConfig.log(_logTag, '🔄 位置情報ストリーム開始');
 
+    // 開発ツールが有効で仮想位置が設定されている場合は仮想位置ストリームを返す
+    if (DevLocationService.isDevToolsEnabled) {
+      final virtualLocation = _devLocationService.getVirtualLocation();
+      if (virtualLocation != null) {
+        LocationConfig.log(_logTag, '🎯 仮想位置ストリームを開始');
+        return Stream.periodic(
+          const Duration(seconds: 1),
+          (_) => _devLocationService.getVirtualLocation() ?? LocationConfig.defaultLocation,
+        );
+      }
+      LocationConfig.log(_logTag, '🛠️ 開発ツール有効、GPSストリームを開始します');
+    }
+
     return Geolocator.getPositionStream(
           locationSettings: LocationConfig.streamSettings,
         )
@@ -122,5 +147,23 @@ class LocationService {
     LocationConfig.log(_logTag, '📏 距離計算: ${distance.toStringAsFixed(2)}m');
     return distance;
   }
+
+  /// 仮想位置を設定（開発ツール用）
+  void setVirtualLocation(LatLng location) {
+    _devLocationService.setVirtualLocation(location);
+  }
+
+  /// 仮想位置をクリア（開発ツール用）
+  void clearVirtualLocation() {
+    _devLocationService.clearVirtualLocation();
+  }
+
+  /// 開発ツールの状態をログ出力
+  void logDevToolsState() {
+    _devLocationService.logCurrentState();
+  }
+
+  /// 開発ツールが有効かチェック
+  bool get isDevToolsEnabled => DevLocationService.isDevToolsEnabled;
 
 }

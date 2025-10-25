@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/constants/location_config.dart';
+import '../../map/widgets/dev_tools/dev_location_service.dart';
 
 /// 常時位置情報取得を管理するコントローラー
 /// アプリのライフサイクルに応じて位置情報の取得を制御し、バッテリー効率を最適化
@@ -10,7 +11,9 @@ class LiveLocationController with WidgetsBindingObserver {
   static const String _logTag = LocationConfig.liveLocationControllerTag;
 
   StreamSubscription<Position>? _positionSubscription;
+  StreamSubscription<LatLng>? _virtualPositionSubscription;
   bool _isTracking = false;
+  final DevLocationService _devLocationService = DevLocationService();
 
   /// 位置情報更新時のコールバック
   void Function(LatLng location)? _onLocationUpdate;
@@ -34,6 +37,19 @@ class LiveLocationController with WidgetsBindingObserver {
     _onError = onError;
 
     LocationConfig.log(_logTag, '🚀 常時位置情報取得開始');
+
+    // 開発ツールが有効で仮想位置が設定されている場合は仮想位置ストリームを使用
+    if (DevLocationService.isDevToolsEnabled) {
+      final virtualLocation = _devLocationService.getVirtualLocation();
+      if (virtualLocation != null) {
+        LocationConfig.log(_logTag, '🎯 仮想位置ストリームを開始');
+        _startVirtualLocationStream();
+        _isTracking = true;
+        WidgetsBinding.instance.addObserver(this);
+        return;
+      }
+      LocationConfig.log(_logTag, '🛠️ 開発ツール有効、GPSストリームを開始');
+    }
 
     // 1) 端末設定/権限チェック
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -109,6 +125,28 @@ class LiveLocationController with WidgetsBindingObserver {
     LocationConfig.log(_logTag, '✅ 常時位置情報取得が開始されました');
   }
 
+  /// 仮想位置ストリームを開始
+  void _startVirtualLocationStream() {
+    _virtualPositionSubscription?.cancel();
+    _virtualPositionSubscription = Stream.periodic(
+      const Duration(seconds: 1),
+      (_) => _devLocationService.getVirtualLocation() ?? LocationConfig.defaultLocation,
+    ).listen(
+      (location) {
+        LocationConfig.log(
+          _logTag,
+          '🎯 仮想位置更新: lat=${location.latitude.toStringAsFixed(6)}, '
+          'lng=${location.longitude.toStringAsFixed(6)}',
+        );
+        _onLocationUpdate?.call(location);
+      },
+      onError: (error) {
+        LocationConfig.log(_logTag, '❌ 仮想位置ストリームエラー: $error');
+        _onError?.call(error);
+      },
+    );
+  }
+
   /// 常時位置情報取得を停止
   Future<void> stopTracking() async {
     if (!_isTracking) {
@@ -120,7 +158,9 @@ class LiveLocationController with WidgetsBindingObserver {
 
     WidgetsBinding.instance.removeObserver(this);
     await _positionSubscription?.cancel();
+    await _virtualPositionSubscription?.cancel();
     _positionSubscription = null;
+    _virtualPositionSubscription = null;
     _isTracking = false;
     _onLocationUpdate = null;
     _onError = null;
@@ -136,11 +176,13 @@ class LiveLocationController with WidgetsBindingObserver {
         // バックグラウンドに移行時は一時停止してバッテリーを節約
         LocationConfig.log(_logTag, '⏸️ アプリがバックグラウンドに移行：位置情報取得を一時停止');
         _positionSubscription?.pause();
+        _virtualPositionSubscription?.pause();
         break;
       case AppLifecycleState.resumed:
         // フォアグラウンドに復帰時は再開
         LocationConfig.log(_logTag, '▶️ アプリがフォアグラウンドに復帰：位置情報取得を再開');
         _positionSubscription?.resume();
+        _virtualPositionSubscription?.resume();
         break;
       case AppLifecycleState.detached:
         // アプリ終了時は完全に停止
@@ -155,6 +197,7 @@ class LiveLocationController with WidgetsBindingObserver {
         // 隠れた状態では一時停止
         LocationConfig.log(_logTag, '🫥 アプリが隠れた状態：位置情報取得を一時停止');
         _positionSubscription?.pause();
+        _virtualPositionSubscription?.pause();
         break;
     }
   }
