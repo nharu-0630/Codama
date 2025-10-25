@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>このアプリは、近くの会話や体験を表示するために現在地を使用します。</string>
 </dict>
 </plist>
