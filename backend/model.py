@@ -14,6 +14,7 @@ class PromptBase(BaseModel):
 class UserPost(BaseModel):
     id: int
     content: str
+    location: tuple[float, float]
     cell_id: int
     created_at: datetime
 
@@ -21,6 +22,7 @@ class UserPost(BaseModel):
 class LLMPost(BaseModel):
     id: int
     content: str
+    location: tuple[float, float]
     user_post_id: int
     created_at: datetime
 
@@ -36,16 +38,14 @@ class Cell(BaseModel):
     location: tuple[float, float]
 
 
-class Post(BaseModel):
-    id: int
-    content: str
-    created_at: datetime
-    cell: Optional[Cell] = None
-
-
 class CurrentResponse(BaseModel):
     area: Area
     cell: Cell
+
+
+class PostsResponse(BaseModel):
+    user_posts: list[UserPost]
+    llm_posts: list[LLMPost]
 
 
 class CreatePostRequest(BaseModel):
