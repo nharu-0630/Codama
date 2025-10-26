@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
-import '../models/post.dart';
+
 import '../models/bubble_position.dart';
+import '../models/post.dart';
 
 class BubbleWidget extends StatelessWidget {
   final Post post;
   final VoidCallback? onTap;
   final BubbleDisplayKind displayKind;
+  final bool showContent;
 
   const BubbleWidget({
     super.key,
     required this.post,
     this.onTap,
     required this.displayKind,
+    this.showContent = true,
   });
 
   @override
@@ -26,7 +29,9 @@ class BubbleWidget extends StatelessWidget {
     final baseBubbleColor = switch (displayKind) {
       BubbleDisplayKind.me => Colors.blue.shade100,
       BubbleDisplayKind.other => Colors.green.shade100,
-      BubbleDisplayKind.landReply => Colors.purple.shade50.withValues(alpha: 0.9),
+      BubbleDisplayKind.landReply => Colors.purple.shade50.withValues(
+        alpha: 0.9,
+      ),
       BubbleDisplayKind.userReply => Colors.orange.shade100,
     };
 
@@ -55,10 +60,7 @@ class BubbleWidget extends StatelessWidget {
         width: double.infinity,
         height: double.infinity,
         child: Container(
-          constraints: const BoxConstraints(
-            minWidth: 60,
-            maxWidth: 200,
-          ),
+          constraints: const BoxConstraints(minWidth: 60, maxWidth: 200),
           child: CustomPaint(
             painter: BubblePainter(
               bubbleColor: bubbleColor,
@@ -66,38 +68,42 @@ class BubbleWidget extends StatelessWidget {
             ),
             child: Container(
               padding: const EdgeInsets.fromLTRB(10, 3, 10, 6),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // LLMの返信の場合はアイコンを表示
-                  if (displayKind == BubbleDisplayKind.landReply) ...[
-                    Icon(
-                      Icons.auto_awesome,
-                      color: Colors.purple.shade400,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  Expanded(
-                    child: Text(
-                      post.text,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 14,
-                        fontWeight: displayKind == BubbleDisplayKind.landReply
-                            ? FontWeight.w400
-                            : FontWeight.w500,
-                        fontStyle: displayKind == BubbleDisplayKind.landReply
-                            ? FontStyle.italic
-                            : FontStyle.normal,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
+              child: showContent
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // LLMの返信の場合はアイコンを表示
+                        if (displayKind == BubbleDisplayKind.landReply) ...[
+                          Icon(
+                            Icons.auto_awesome,
+                            color: Colors.purple.shade400,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Expanded(
+                          child: Text(
+                            post.text,
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 14,
+                              fontWeight:
+                                  displayKind == BubbleDisplayKind.landReply
+                                      ? FontWeight.w400
+                                      : FontWeight.w500,
+                              fontStyle:
+                                  displayKind == BubbleDisplayKind.landReply
+                                      ? FontStyle.italic
+                                      : FontStyle.normal,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
             ),
           ),
         ),
@@ -110,10 +116,7 @@ class BubblePainter extends CustomPainter {
   final Color bubbleColor;
   final Color borderColor;
 
-  BubblePainter({
-    required this.bubbleColor,
-    required this.borderColor,
-  });
+  BubblePainter({required this.bubbleColor, required this.borderColor});
 
   @override
   void paint(Canvas canvas, Size size) {

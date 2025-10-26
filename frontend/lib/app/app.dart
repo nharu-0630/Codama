@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../features/map/presentation/map_screen.dart';
 
 class KodamaMapApp extends StatelessWidget {

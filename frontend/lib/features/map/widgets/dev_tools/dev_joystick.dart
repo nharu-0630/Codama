@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import '../../../../core/constants/location_config.dart';
 
 /// 開発用ジョイスティック
 ///
@@ -86,7 +85,7 @@ class _DevJoystickState extends State<DevJoystick> {
                   ],
                 ),
                 child: Icon(
-                  Icons.navigation,
+                  Icons.location_searching,
                   color: _isDragging ? Colors.white : Colors.black87,
                   size: 20,
                 ),
@@ -155,13 +154,6 @@ class _DevJoystickState extends State<DevJoystick> {
     final newLocation = LatLng(
       widget.currentLocation.latitude + deltaLat,
       widget.currentLocation.longitude + deltaLng,
-    );
-
-    LocationConfig.log(
-      _logTag,
-      '📍 仮想位置更新: lat=${newLocation.latitude.toStringAsFixed(6)}, '
-      'lng=${newLocation.longitude.toStringAsFixed(6)} '
-      '(delta: ${deltaLat.toStringAsFixed(8)}, ${deltaLng.toStringAsFixed(8)})',
     );
 
     // コールバックで位置を通知

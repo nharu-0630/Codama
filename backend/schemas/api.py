@@ -25,6 +25,8 @@ class APIPost(BaseModel):
     uuid: UUID
     content: str
     location: tuple[float, float]
+    area: APIArea | None = None
+    cell: APICell | None = None
     replies: list["APIPost"] = []
     created_at: datetime
 
