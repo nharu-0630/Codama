@@ -53,7 +53,7 @@ class LocationService {
       // 精度チェック
 
       return location;
-    } catch (e, stackTrace) {
+    } catch (e) {
       return LocationConfig.defaultLocation;
     }
   }

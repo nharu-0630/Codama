@@ -28,7 +28,6 @@ class DevJoystick extends StatefulWidget {
 }
 
 class _DevJoystickState extends State<DevJoystick> {
-  static const String _logTag = '[DevJoystick]';
   static const double _joystickSize = 100.0;
   static const double _knobSize = 40.0;
   static const double _maxDragDistance = (_joystickSize - _knobSize) / 2;
