@@ -201,7 +201,7 @@ class CellTrackingService {
       postsWithPriority.add(
         _PostWithPriority(
           post: reply.copyWith(kind: PostKind.land, isTemporary: true),
-          priority: 1,
+          priority: 3,
           sortKey: reply.createdAt,
         ),
       );
@@ -222,18 +222,18 @@ class CellTrackingService {
         postsWithPriority.add(
           _PostWithPriority(
             post: reply.copyWith(kind: PostKind.land, isTemporary: true),
-            priority: 3,
+            priority: 1,
             sortKey: reply.createdAt,
           ),
         );
       }
     }
 
-    // 優先度順、同一優先度内では古い順にソート
+    // 優先度が低い順（数値が大きい順）、同一優先度内では新しい順にソート
     postsWithPriority.sort((a, b) {
-      final priorityCompare = a.priority.compareTo(b.priority);
+      final priorityCompare = b.priority.compareTo(a.priority);
       if (priorityCompare != 0) return priorityCompare;
-      return a.sortKey.compareTo(b.sortKey);
+      return b.sortKey.compareTo(a.sortKey);
     });
 
     final sortedPosts = postsWithPriority.map((p) => p.post).toList();
