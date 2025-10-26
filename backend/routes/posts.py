@@ -8,12 +8,20 @@ from repositories.embedding_repository import create_embedding, find_similar_pos
 from repositories.post_repository import (
     create_llm_post,
     create_user_post,
-    get_llm_posts_by_user_post_uuid,
     get_user_post_by_uuid,
     get_user_posts_by_location,
+    get_user_posts_by_user_uuid,
     get_user_posts_by_uuids,
+    get_user_posts_with_replies,
 )
-from schemas.api import APIPost, CreatePostRequest, CreatePostResponse, PostsResponse
+from schemas.api import (
+    APIArea,
+    APICell,
+    APIPost,
+    CreatePostRequest,
+    CreatePostResponse,
+    PostsResponse,
+)
 from schemas.db import DBLLMPost, DBUserPost
 from utils.auth import get_current_user
 from utils.coordinates import add_random_offset
@@ -28,24 +36,36 @@ from utils.post_llm import generate_post
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 
-def transform_db_post_to_api(
-    db_post: DBUserPost, db_llm_posts: list[DBLLMPost]
-) -> APIPost:
+def transform_post(post: DBUserPost, replies: list[DBLLMPost]) -> APIPost:
     """データベースモデルの投稿をAPIモデルに変換"""
+    # area_nameをネストされたモデルから取得
     return APIPost(
-        uuid=db_post.uuid,
-        content=db_post.content,
-        location=decode_wkt_location(db_post.location),
-        created_at=db_post.created_at,
+        uuid=post.uuid,
+        content=post.content,
+        location=decode_wkt_location(post.location),
+        area=APIArea(
+            id=post.cells.areas.id,
+            name=post.cells.areas.name,
+        )
+        if post.cells and post.cells.areas
+        else None,
+        cell=APICell(
+            id=post.cells.id,
+            geo_hash=post.cells.geo_hash,
+            location=decode_wkt_location(post.cells.location),
+        )
+        if post.cells
+        else None,
+        created_at=post.created_at,
         replies=[
             APIPost(
-                uuid=llm_post.uuid,
-                content=llm_post.content,
-                location=decode_wkt_location(llm_post.location),
-                created_at=llm_post.created_at,
+                uuid=reply.uuid,
+                content=reply.content,
+                location=decode_wkt_location(reply.location),
+                created_at=reply.created_at,
                 replies=[],
             )
-            for llm_post in db_llm_posts
+            for reply in replies
         ],
     )
 
@@ -57,15 +77,28 @@ async def get_posts(lat: float, lon: float):
     geo_hash = encode_geo_hash(lat, lon)
 
     # ジオハッシュで投稿を検索
-    db_posts = get_user_posts_by_location(geo_hash)
+    db_posts = get_user_posts_by_location(geo_hash, settings.POSTS_FETCH_LIMIT)
 
     # 各投稿にLLM返信を含めてAPIモデルに変換
-    api_posts: list[APIPost] = []
-    for db_post in db_posts:
-        db_llm_posts = get_llm_posts_by_user_post_uuid(str(db_post.uuid))
-        api_posts.append(transform_db_post_to_api(db_post, db_llm_posts))
+    posts_with_replies = get_user_posts_with_replies(db_posts)
+    posts = [transform_post(post, replies) for post, replies in posts_with_replies]
 
-    return PostsResponse(posts=api_posts)
+    return PostsResponse(posts=posts)
+
+
+@router.get(
+    "/me", response_model=PostsResponse, dependencies=[Depends(get_current_user)]
+)
+async def get_my_posts(user=Depends(get_current_user)):  # type: ignore
+    """自分の投稿一覧を取得"""
+    # ユーザーUUIDで投稿を検索
+    db_posts = get_user_posts_by_user_uuid(user.id)
+
+    # 各投稿にLLM返信を含めてAPIモデルに変換
+    posts_with_replies = get_user_posts_with_replies(db_posts)
+    posts = [transform_post(post, replies) for post, replies in posts_with_replies]
+
+    return PostsResponse(posts=posts)
 
 
 @router.post("", response_model=CreatePostResponse)
@@ -123,17 +156,23 @@ async def create_post(
     if not db_created_post_refreshed:
         raise HTTPException(status_code=500, detail="Failed to retrieve created post")
 
-    db_created_llm_posts = get_llm_posts_by_user_post_uuid(str(db_created_post.uuid))
+    # 作成した投稿のLLM返信を取得
+    created_post_with_replies = get_user_posts_with_replies([db_created_post_refreshed])
+    if not created_post_with_replies:
+        raise HTTPException(
+            status_code=500, detail="Failed to retrieve created post replies"
+        )
+    created_post, created_replies = created_post_with_replies[0]
 
     # 類似投稿を取得してAPIモデルに変換
     db_similar_posts = get_user_posts_by_uuids(similar_post_uuids)
-    api_similar_posts: list[APIPost] = []
-    for db_post in db_similar_posts:
-        db_llm_posts = get_llm_posts_by_user_post_uuid(str(db_post.uuid))
-        api_similar_posts.append(transform_db_post_to_api(db_post, db_llm_posts))
+    similar_posts_with_replies = get_user_posts_with_replies(db_similar_posts)
+    api_similar_posts = [
+        transform_post(post, replies) for post, replies in similar_posts_with_replies
+    ]
 
     # 作成した投稿と類似投稿を返却
     return CreatePostResponse(
-        post=transform_db_post_to_api(db_created_post_refreshed, db_created_llm_posts),
+        post=transform_post(created_post, created_replies),
         similar_posts=api_similar_posts,
     )
