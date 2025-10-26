@@ -52,7 +52,6 @@ class _MapScreenState extends State<MapScreen> {
 
   // 150m radius circle
   static const double _circleRadiusMeters = 150.0;
-  LatLng? _mapCenter;
 
   @override
   void initState() {
@@ -76,9 +75,6 @@ class _MapScreenState extends State<MapScreen> {
         (position.zoom - _lastZoomLevel!).abs() >= 1.0) {
       _lastZoomLevel = position.zoom;
     }
-    setState(() {
-      _mapCenter = position.center;
-    });
     _updateBubblePositions();
   }
 
@@ -143,9 +139,10 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   bool _isInsideCircle(LatLng position) {
-    if (_mapCenter == null) return true;
+    final loc = _shouldShowDevTools ? _virtualLocation : _currentLocation;
+    if (loc == null) return true;
     const distance = Distance();
-    final distanceMeters = distance.as(LengthUnit.Meter, _mapCenter!, position);
+    final distanceMeters = distance.as(LengthUnit.Meter, loc, position);
     return distanceMeters <= _circleRadiusMeters;
   }
 
@@ -312,11 +309,13 @@ class _MapScreenState extends State<MapScreen> {
                 additionalOptions: {"api_key": apiKey},
                 maxZoom: 20,
               ),
-              if (_mapCenter != null)
+              if (_currentLocation != null)
                 CircleLayer(
                   circles: [
                     CircleMarker(
-                      point: _mapCenter!,
+                      point: _shouldShowDevTools
+                          ? _virtualLocation
+                          : _currentLocation!,
                       radius: _circleRadiusMeters,
                       useRadiusInMeter: true,
                       color: Colors.orange.withValues(alpha: 0.1),

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+
 from repositories.area_repository import get_area_by_id
 from repositories.cell_repository import get_or_create_cell
 from schemas.api import APIArea, APICell, CurrentResponse

@@ -48,6 +48,6 @@ def get_area_name_from_geocode(lat: float, lon: float) -> str | None:
             elif "sublocality_level_1" in types:
                 sublocality = component.get("short_name")  # type: ignore
         # 県、市、区を結合して返す
-        if admin_area and locality and sublocality:
-            return f"{admin_area}{locality}{sublocality}"
+        if admin_area and locality:
+            return f"{admin_area}{locality}{sublocality or ''}"
     return None
