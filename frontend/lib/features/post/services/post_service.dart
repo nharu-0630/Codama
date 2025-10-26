@@ -14,7 +14,6 @@ class PostService {
       dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000';
   final AuthService _authService = AuthService();
 
-  /// 投稿作成
   Future<CreatePostResponse> createPost({
     required double lat,
     required double lng,
@@ -25,14 +24,9 @@ class PostService {
     );
   }
 
-  /// 位置に基づく投稿取得
   Future<List<Post>> getPostsByLocation(double lat, double lon) async {
     return await _authService.withAuth(() => _getPostsByLocationApi(lat, lon));
   }
-
-  // =============
-  // API実装
-  // =============
 
   Future<CreatePostResponse> _createPostApi({
     required double lat,

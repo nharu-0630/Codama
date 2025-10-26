@@ -154,92 +154,28 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  /// 特定座標に投稿を作成（楽観的UI更新）
-  Future<void> createPostAtLocation({
-    required double lat,
-    required double lng,
-    required String text,
-  }) async {
-    try {
-      // 認証が必要な処理として実行（自動リフレッシュ付き）
-      await _authService.withAuth(() async {
-        await _cellTrackingService.createPostOptimistically(
-          lat: lat,
-          lng: lng,
-          text: text,
-        );
-      });
-
-      LocationConfig.log(LocationConfig.mapScreenTag, '✅ 投稿作成成功: $text');
-    } on AuthenticationRequiredException catch (e) {
-      LocationConfig.log(
-        LocationConfig.mapScreenTag,
-        '🔒 認証エラー、サインアップモーダルを表示: $e',
-      );
-      _showSignupModal();
-    } catch (e) {
-      LocationConfig.log(LocationConfig.mapScreenTag, '❌ 投稿作成エラー: $e');
-
-      // 認証関連のエラーの場合はサインアップモーダルを表示
-      if (e.toString().contains('認証') ||
-          e.toString().contains('authorization')) {
-        _showSignupModal();
-      } else {
-        // その他のエラーは再スロー
-        rethrow;
-      }
-    }
-  }
-
-  /// 投稿作成ダイアログを表示
   void _showCreatePostDialog() {
     showDialog(
       context: context,
       builder: (context) => CreatePostDialog(
         onPostCreate: (String text) async {
-          await _createPostAtCurrentLocation(text);
+          _createPost(text);
         },
       ),
     );
   }
 
-  /// 現在地に投稿を作成
-  Future<void> _createPostAtCurrentLocation(String text) async {
-    // 現在地または開発ツールの仮想位置を使用
-    final location = _shouldShowDevTools ? _virtualLocation : _currentLocation;
-
-    if (location == null) {
-      // 位置情報が取得できない場合はデフォルト位置（横浜駅）を使用
-      await createPostAtLocation(
-        lat: LocationConfig.defaultLocation.latitude,
-        lng: LocationConfig.defaultLocation.longitude,
-        text: text,
-      );
-      LocationConfig.log(
-        LocationConfig.mapScreenTag,
-        '⚠️ 位置情報未取得のためデフォルト位置に投稿',
-      );
-    } else {
-      await createPostAtLocation(
-        lat: location.latitude,
-        lng: location.longitude,
-        text: text,
-      );
-      LocationConfig.log(
-        LocationConfig.mapScreenTag,
-        '💬 投稿作成: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}',
-      );
+  Future<void> _createPost(String text) async {
+    final loc = _shouldShowDevTools ? _virtualLocation : _currentLocation;
+    if (loc != null) {
+      _cellTrackingService.createPost(loc: loc, text: text);
     }
   }
 
-  /// 吹き出し位置を更新
   void _updateBubblePositions() {
     if (_posts.isEmpty) {
-      LocationConfig.log(LocationConfig.mapScreenTag, '⚠️ 投稿が空です');
       return;
     }
-
-    // MapControllerが準備できているか確認
     try {
       final camera = _mapController.camera;
       final bounds = ViewBounds(
@@ -248,34 +184,15 @@ class _MapScreenState extends State<MapScreen> {
         east: camera.visibleBounds.east,
         west: camera.visibleBounds.west,
       );
-
-      // LocationConfig.log(LocationConfig.mapScreenTag, '📍 画面範囲: N${bounds.north.toStringAsFixed(4)}, S${bounds.south.toStringAsFixed(4)}, E${bounds.east.toStringAsFixed(4)}, W${bounds.west.toStringAsFixed(4)}');
-
       final bubblePositions = _bubbleManager.layoutBubbles(
         _posts,
         bounds,
-        _authService.userId, // 実際のユーザーIDを使用
+        _authService.userId,
       );
-
-      LocationConfig.log(
-        LocationConfig.mapScreenTag,
-        '💬 表示する吹き出し: ${bubblePositions.length}件',
-      );
-
       setState(() {
         _bubblePositions = bubblePositions;
       });
-    } catch (e) {
-      LocationConfig.log(
-        LocationConfig.mapScreenTag,
-        '⚠️ MapController未準備: $e',
-      );
-    }
-  }
-
-  /// 吹き出しタップ時の処理
-  void _onBubbleTap(Post post) {
-    _showPostDetail(post);
+    } catch (e) {}
   }
 
   /// 投稿詳細を表示
@@ -559,7 +476,7 @@ class _MapScreenState extends State<MapScreen> {
                       child: BubbleWidget(
                         post: bubblePosition.post,
                         displayKind: bubblePosition.displayKind,
-                        onTap: () => _onBubbleTap(bubblePosition.post),
+                        onTap: () => _showPostDetail(bubblePosition.post),
                       ),
                     );
                   }).toList(),

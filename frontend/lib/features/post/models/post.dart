@@ -88,7 +88,7 @@ class Post {
       kind: isLandMemory ? PostKind.land : PostKind.user,
       text: data['content'] as String,
       createdAt: DateTime.parse(data['created_at'] as String),
-      userId: data['user_id'] as String?,
+      userId: data['user_uuid'] as String?,
       replies: repliesList,
       parentPostId: parentPostId,
       isTemporary: false, // APIから取得した投稿は通常投稿
