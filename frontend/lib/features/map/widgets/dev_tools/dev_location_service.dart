@@ -23,11 +23,12 @@ class DevLocationService {
 
   /// 開発ツールが有効かチェック
   static bool get isDevToolsEnabled {
-    // デバッグモードかつDEV_TOOLS=trueの場合のみ有効
+    // デバッグモード時はデフォルトで有効、DEV_TOOLS=falseで明示的に無効化可能
     if (!kDebugMode) return false;
 
     final devToolsValue = dotenv.env['DEV_TOOLS']?.toLowerCase();
-    return devToolsValue == 'true';
+    // DEV_TOOLSが明示的にfalseの場合のみ無効化
+    return devToolsValue != 'false';
   }
 
   /// 仮想位置を設定

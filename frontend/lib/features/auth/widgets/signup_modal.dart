@@ -3,11 +3,8 @@ import '../services/auth_service.dart';
 
 class SignupModal extends StatefulWidget {
   final VoidCallback onSuccess;
-  
-  const SignupModal({
-    super.key,
-    required this.onSuccess,
-  });
+
+  const SignupModal({super.key, required this.onSuccess});
 
   @override
   State<SignupModal> createState() => _SignupModalState();
@@ -24,33 +21,32 @@ class _SignupModalState extends State<SignupModal> {
       child: Container(
         padding: const EdgeInsets.all(24),
         constraints: const BoxConstraints(maxWidth: 400),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8D5C4), // 薄い茶色
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.location_on,
-              size: 64,
-              color: Colors.blue.shade400,
+            const SizedBox(height: 32),
+
+            Text(
+              'Codama',
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            
+
             Text(
-              'Kodama へようこそ',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            
-            Text(
-              '場所に紐づく会話を始めるために\n匿名アカウントを作成します',
+              'あなたのふとした気づきがその土地の声になる',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey.shade600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade700),
             ),
             const SizedBox(height: 24),
-            
+
             if (_errorMessage != null) ...[
               Container(
                 padding: const EdgeInsets.all(12),
@@ -61,12 +57,19 @@ class _SignupModalState extends State<SignupModal> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                    Icon(
+                      Icons.error_outline,
+                      color: Colors.red.shade600,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(color: Colors.red.shade600, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.red.shade600,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ],
@@ -74,13 +77,13 @@ class _SignupModalState extends State<SignupModal> {
               ),
               const SizedBox(height: 16),
             ],
-            
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _handleSignup,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade400,
+                  backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -97,7 +100,7 @@ class _SignupModalState extends State<SignupModal> {
                         ),
                       )
                     : const Text(
-                        '匿名アカウントを作成',
+                        '話しかけてみる',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -105,16 +108,13 @@ class _SignupModalState extends State<SignupModal> {
                       ),
               ),
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             Text(
-              '※ 個人情報は保存されません\n※ アカウントは日次で更新されます',
+              '※ アカウントは日次で更新されます',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade500,
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
             ),
           ],
         ),
@@ -130,7 +130,7 @@ class _SignupModalState extends State<SignupModal> {
 
     try {
       final success = await _authService.signup();
-      
+
       if (success) {
         widget.onSuccess();
         if (mounted) {

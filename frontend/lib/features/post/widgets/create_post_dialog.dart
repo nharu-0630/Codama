@@ -65,14 +65,16 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('あなたの心の声を聞かせて'),
+      backgroundColor: const Color(0xFFE8D5C4), // 薄い茶色
+      title: const Text(
+        'あなたの心の声を聞かせて',
+        style: TextStyle(fontSize: 16),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 投稿内容入力
-          const Text('投稿内容', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
           TextField(
             controller: _textController,
             maxLines: 4,
@@ -109,11 +111,18 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
         ),
         ElevatedButton(
           onPressed: _isSubmitting ? null : _onSubmit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.orange,
+            foregroundColor: Colors.white,
+          ),
           child: _isSubmitting
               ? const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Text('投稿'),
         ),
