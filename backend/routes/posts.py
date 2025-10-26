@@ -41,6 +41,7 @@ def transform_post(post: DBUserPost, replies: list[DBLLMPost]) -> APIPost:
     # area_nameをネストされたモデルから取得
     return APIPost(
         uuid=post.uuid,
+        user_uuid=post.user_uuid,
         content=post.content,
         location=decode_wkt_location(post.location),
         area=APIArea(

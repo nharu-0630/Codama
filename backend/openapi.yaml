@@ -69,6 +69,12 @@ components:
             $ref: '#/components/schemas/APIPost-Input'
           title: Replies
           type: array
+        user_uuid:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: User Uuid
         uuid:
           format: uuid
           title: Uuid
@@ -112,6 +118,12 @@ components:
             $ref: '#/components/schemas/APIPost-Output'
           title: Replies
           type: array
+        user_uuid:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: User Uuid
         uuid:
           format: uuid
           title: Uuid
