@@ -87,7 +87,7 @@ class _DevJoystickState extends State<DevJoystick> {
                   ],
                 ),
                 child: Icon(
-                  Icons.navigation,
+                  Icons.location_searching,
                   color: _isDragging ? Colors.white : Colors.black87,
                   size: 20,
                 ),
