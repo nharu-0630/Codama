@@ -23,6 +23,7 @@ class APIPost(BaseModel):
     """投稿情報のAPIモデル（ユーザー投稿・LLM返信）"""
 
     uuid: UUID
+    user_uuid: UUID | None = None
     content: str
     location: tuple[float, float]
     area: APIArea | None = None
