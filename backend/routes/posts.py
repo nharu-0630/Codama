@@ -1,7 +1,9 @@
 from time import sleep
 
-from config.settings import settings
 from fastapi import APIRouter, Depends, HTTPException
+
+from config.settings import settings
+from repositories.cell_repository import get_or_create_cell
 from repositories.embedding_repository import create_embedding, find_similar_posts
 from repositories.post_repository import (
     create_llm_post,
@@ -19,7 +21,6 @@ from utils.geo_hash import (
     decode_wkt_location,
     encode_geo_hash,
     encode_wkt_location,
-    get_or_create_cell,
 )
 from utils.post_embedding import generate_embedding
 from utils.post_llm import generate_post
@@ -74,18 +75,17 @@ async def create_post(
 ):
     """新しい投稿を作成"""
     # 座標からセルを取得または作成
-    cell_data = get_or_create_cell(request.lat, request.lon)
-
-    area_id = int(cell_data["area_id"])  # type: ignore
+    cell = get_or_create_cell(request.lat, request.lon)
+    if not cell:
+        raise HTTPException(status_code=404, detail="Cell could not be created")
 
     # プライバシー保護のため座標にランダムオフセットを追加
     location = add_random_offset(request.lat, request.lon)
-    cell_id = int(cell_data["id"])  # type: ignore
 
     # ユーザー投稿を作成
     db_created_post = create_user_post(
         content=request.content,
-        cell_id=cell_id,
+        cell_id=cell.id,
         user_uuid=user.id,
         location_wkt=encode_wkt_location(location[0], location[1]),
     )
@@ -104,7 +104,7 @@ async def create_post(
     )
     for _ in range(generate_count):
         # LLMで返信を生成
-        llm_response = await generate_post(request.content, area_id)
+        llm_response = await generate_post(request.content, cell.area_id)
         if llm_response is None:
             continue
 
