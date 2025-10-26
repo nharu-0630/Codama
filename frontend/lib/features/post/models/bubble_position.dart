@@ -1,7 +1,12 @@
 import 'package:latlong2/latlong.dart';
 import 'post.dart';
 
-enum BubbleDisplayKind { me, friend, land, all }
+/// 吹き出しの表示種別
+/// - me: 自分が投稿した投稿
+/// - other: ランダムに取得する他人の投稿
+/// - landReply: 自分の投稿に対するLLMの返信
+/// - userReply: 自分の投稿に対する他のユーザーの返信
+enum BubbleDisplayKind { me, other, landReply, userReply }
 
 class BubblePosition {
   final Post post;

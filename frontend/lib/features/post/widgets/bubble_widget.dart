@@ -1,40 +1,53 @@
 import 'package:flutter/material.dart';
 import '../models/post.dart';
+import '../models/bubble_position.dart';
 
 class BubbleWidget extends StatelessWidget {
   final Post post;
   final VoidCallback? onTap;
+  final BubbleDisplayKind displayKind;
 
   const BubbleWidget({
     super.key,
     required this.post,
     this.onTap,
+    required this.displayKind,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isUserPost = post.kind == PostKind.user;
-    final isLandMemory = post.kind == PostKind.land;
+    // 4タイプに応じた色設定
+    // 1. me: 自分の投稿 - 青系
+    // 2. other: 他人の投稿 - 緑系
+    // 3. landReply: LLMの返信 - 紫系（神秘的）
+    // 4. userReply: ユーザーの返信 - オレンジ系
+    // 一時投稿: 背景色を白っぽくする（枠の色はそのまま）
 
-    // ユーザー投稿: 青系
-    // 土地の記憶（LLM返信）: 紫系で神秘的に
-    final bubbleColor = isUserPost
-        ? Colors.blue.shade100
-        : isLandMemory
-            ? Colors.purple.shade50.withValues(alpha: 0.9)
-            : Colors.green.shade100;
+    final baseBubbleColor = switch (displayKind) {
+      BubbleDisplayKind.me => Colors.blue.shade100,
+      BubbleDisplayKind.other => Colors.green.shade100,
+      BubbleDisplayKind.landReply => Colors.purple.shade50.withValues(alpha: 0.9),
+      BubbleDisplayKind.userReply => Colors.orange.shade100,
+    };
 
-    final borderColor = isUserPost
-        ? Colors.blue.shade400
-        : isLandMemory
-            ? Colors.purple.shade300
-            : Colors.green.shade400;
+    // 一時投稿の場合は背景色を白っぽくする
+    final bubbleColor = post.isTemporary
+        ? Colors.white.withValues(alpha: 0.95)
+        : baseBubbleColor;
 
-    final textColor = isUserPost
-        ? Colors.blue.shade800
-        : isLandMemory
-            ? Colors.purple.shade700
-            : Colors.green.shade800;
+    final borderColor = switch (displayKind) {
+      BubbleDisplayKind.me => Colors.blue.shade400,
+      BubbleDisplayKind.other => Colors.green.shade400,
+      BubbleDisplayKind.landReply => Colors.purple.shade300,
+      BubbleDisplayKind.userReply => Colors.orange.shade400,
+    };
+
+    final textColor = switch (displayKind) {
+      BubbleDisplayKind.me => Colors.blue.shade800,
+      BubbleDisplayKind.other => Colors.green.shade800,
+      BubbleDisplayKind.landReply => Colors.purple.shade700,
+      BubbleDisplayKind.userReply => Colors.orange.shade800,
+    };
 
     return GestureDetector(
       onTap: onTap,
@@ -57,8 +70,8 @@ class BubbleWidget extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 土地の記憶の場合はアイコンを表示
-                  if (isLandMemory) ...[
+                  // LLMの返信の場合はアイコンを表示
+                  if (displayKind == BubbleDisplayKind.landReply) ...[
                     Icon(
                       Icons.auto_awesome,
                       color: Colors.purple.shade400,
@@ -72,8 +85,12 @@ class BubbleWidget extends StatelessWidget {
                       style: TextStyle(
                         color: textColor,
                         fontSize: 14,
-                        fontWeight: isLandMemory ? FontWeight.w400 : FontWeight.w500,
-                        fontStyle: isLandMemory ? FontStyle.italic : FontStyle.normal,
+                        fontWeight: displayKind == BubbleDisplayKind.landReply
+                            ? FontWeight.w400
+                            : FontWeight.w500,
+                        fontStyle: displayKind == BubbleDisplayKind.landReply
+                            ? FontStyle.italic
+                            : FontStyle.normal,
                       ),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,

@@ -248,7 +248,7 @@ class _MapScreenState extends State<MapScreen> {
       final bubblePositions = _bubbleManager.layoutBubbles(
         _posts,
         bounds,
-        'current_user', // TODO: 実際のユーザーIDを使用
+        _authService.userId, // 実際のユーザーIDを使用
       );
 
       LocationConfig.log(
@@ -554,6 +554,7 @@ class _MapScreenState extends State<MapScreen> {
                       alignment: Alignment.bottomCenter, // 吹き出しの下端中央を基準点に
                       child: BubbleWidget(
                         post: bubblePosition.post,
+                        displayKind: bubblePosition.displayKind,
                         onTap: () => _onBubbleTap(bubblePosition.post),
                       ),
                     );

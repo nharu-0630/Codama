@@ -7,6 +7,17 @@ import '../../post/models/post.dart';
 import '../../post/models/create_post_response.dart';
 import '../../../core/constants/location_config.dart';
 
+/// 一時投稿（5秒で消える投稿）を保持するクラス
+class TemporaryPost {
+  final Post post;
+  final DateTime displayStartTime;
+
+  TemporaryPost({
+    required this.post,
+    required this.displayStartTime,
+  });
+}
+
 class CellTrackingService {
   final LocationApiService _locationApiService = LocationApiService();
   final AuthService _authService = AuthService();
@@ -16,11 +27,15 @@ class CellTrackingService {
   StreamController<List<Post>>? _postsController;
   List<Post> _displayedPosts = []; // 画面に表示されている投稿
   List<Post> _pendingPosts = []; // 表示待ちキュー
+  List<TemporaryPost> _temporaryPosts = []; // 一時投稿（5秒で消える）
   Timer? _displayTimer;
+  Timer? _cleanupTimer;
 
   Stream<List<Post>>? get postsStream => _postsController?.stream;
 
   static const Duration displayInterval = Duration(milliseconds: 500); // 表示間隔
+  static const Duration temporaryPostLifetime = Duration(seconds: 5); // 一時投稿の有効期限
+  static const Duration cleanupInterval = Duration(seconds: 1); // クリーンアップ間隔
 
   Future<void> initialize() async {
     await _authService.loadStoredTokens();
@@ -34,6 +49,7 @@ class CellTrackingService {
 
     _postsController = StreamController<List<Post>>.broadcast();
     _startDisplayTimer();
+    _startCleanupTimer();
   }
 
   /// 表示タイマーを開始
@@ -47,6 +63,41 @@ class CellTrackingService {
       'CellTrackingService',
       '⏱️ 表示タイマー開始: ${displayInterval.inSeconds}秒間隔',
     );
+  }
+
+  /// クリーンアップタイマーを開始
+  void _startCleanupTimer() {
+    _cleanupTimer?.cancel();
+    _cleanupTimer = Timer.periodic(cleanupInterval, (_) {
+      _cleanupExpiredTemporaryPosts();
+    });
+
+    LocationConfig.log(
+      'CellTrackingService',
+      '🧹 クリーンアップタイマー開始: ${cleanupInterval.inSeconds}秒間隔',
+    );
+  }
+
+  /// 期限切れの一時投稿を削除
+  void _cleanupExpiredTemporaryPosts() {
+    final now = DateTime.now();
+    final beforeCount = _temporaryPosts.length;
+
+    _temporaryPosts.removeWhere((tempPost) {
+      final elapsed = now.difference(tempPost.displayStartTime);
+      return elapsed >= temporaryPostLifetime;
+    });
+
+    final removedCount = beforeCount - _temporaryPosts.length;
+    if (removedCount > 0) {
+      LocationConfig.log(
+        'CellTrackingService',
+        '🧹 一時投稿を削除: ${removedCount}件 (残り: ${_temporaryPosts.length}件)',
+      );
+
+      // 削除後にStreamを更新
+      _broadcastAllPosts();
+    }
   }
 
   /// 表示待ちキューから次の投稿を1件取り出して表示
@@ -64,8 +115,17 @@ class CellTrackingService {
       '✨ 投稿を表示: "${post.text}" (残り待ち: ${_pendingPosts.length}件)',
     );
 
-    // 画面に反映
-    _postsController?.add([..._displayedPosts]);
+    // 画面に反映（通常投稿と一時投稿を統合）
+    _broadcastAllPosts();
+  }
+
+  /// 通常投稿と一時投稿を統合してStreamに配信
+  void _broadcastAllPosts() {
+    final allPosts = [
+      ..._displayedPosts,
+      ..._temporaryPosts.map((temp) => temp.post),
+    ];
+    _postsController?.add(allPosts);
   }
 
   Future<void> onLocationChanged(LatLng location) async {
@@ -120,8 +180,8 @@ class CellTrackingService {
         'CellTrackingService',
         '❌ onLocationChangedエラー: $e',
       );
-      // エラー時は現在の表示状態を保持
-      _postsController?.add([..._displayedPosts]);
+      // エラー時は現在の表示状態を保持（一時投稿も含む）
+      _broadcastAllPosts();
     }
   }
 
@@ -172,6 +232,31 @@ class CellTrackingService {
     );
   }
 
+  /// 投稿を一時投稿リストに追加（5秒で自動削除される）
+  void _addTemporaryPosts(List<Post> newPosts) {
+    // 既に一時投稿リストにある投稿IDを収集
+    final existingIds = _temporaryPosts.map((temp) => temp.post.id).toSet();
+
+    // 重複していない投稿のみを一時投稿として追加
+    final now = DateTime.now();
+    for (final post in newPosts) {
+      if (!existingIds.contains(post.id)) {
+        _temporaryPosts.add(TemporaryPost(
+          post: post,
+          displayStartTime: now,
+        ));
+      }
+    }
+
+    LocationConfig.log(
+      'CellTrackingService',
+      '⏰ 一時投稿に追加: ${newPosts.length}件 (現在の一時投稿: ${_temporaryPosts.length}件)',
+    );
+
+    // 即座にStreamを更新して表示
+    _broadcastAllPosts();
+  }
+
   /// 楽観的UI更新で投稿を作成
   Future<void> createPostOptimistically({
     required double lat,
@@ -192,6 +277,7 @@ class CellTrackingService {
       text: text,
       createdAt: DateTime.now(),
       userId: _authService.userId,
+      isTemporary: true,
     );
 
     // 楽観的投稿をキューに追加（すぐに表示される）
@@ -227,12 +313,12 @@ class CellTrackingService {
         '📝 レスポンスから取得した投稿: ${responsePosts.length}件',
       );
 
-      // 優先度順にソートしてキューに追加
-      _addPostsToQueue(responsePosts);
+      // レスポンスの投稿を一時投稿として追加（5秒で消える）
+      _addTemporaryPosts(responsePosts);
 
       LocationConfig.log(
         'CellTrackingService',
-        '✅ 投稿作成完了: 待ちキュー${_pendingPosts.length}件',
+        '✅ 投稿作成完了: 一時投稿${_temporaryPosts.length}件',
       );
     } catch (e) {
       LocationConfig.log(
@@ -242,7 +328,7 @@ class CellTrackingService {
       // API失敗時は楽観的投稿を削除
       _displayedPosts.removeWhere((p) => p.id == optimisticPost.id);
       _pendingPosts.removeWhere((p) => p.id == optimisticPost.id);
-      _postsController?.add([..._displayedPosts]);
+      _broadcastAllPosts();
       rethrow;
     }
   }
@@ -253,16 +339,23 @@ class CellTrackingService {
     final postsWithPriority = <_PostWithPriority>[];
 
     // 1. 作成された投稿（優先度0、最優先）
+    // 自分の投稿なので、userIdが含まれていない場合は設定する
+    // 一時投稿として5秒で消えるようにする
+    final createdPost = response.post.copyWith(
+      userId: response.post.userId ?? _authService.userId,
+      isTemporary: true,
+    );
+
     postsWithPriority.add(_PostWithPriority(
-      post: response.post,
+      post: createdPost,
       priority: 0,
-      sortKey: response.post.createdAt,
+      sortKey: createdPost.createdAt,
     ));
 
     // 2. 作成された投稿への返信（優先度1、古い順）
-    for (final reply in response.post.replies) {
+    for (final reply in createdPost.replies) {
       postsWithPriority.add(_PostWithPriority(
-        post: reply.copyWith(kind: PostKind.land),
+        post: reply.copyWith(kind: PostKind.land, isTemporary: true),
         priority: 1,
         sortKey: reply.createdAt,
       ));
@@ -271,7 +364,7 @@ class CellTrackingService {
     // 3. 類似投稿（優先度2、古い順）
     for (final similarPost in response.similarPosts) {
       postsWithPriority.add(_PostWithPriority(
-        post: similarPost,
+        post: similarPost.copyWith(isTemporary: true),
         priority: 2,
         sortKey: similarPost.createdAt,
       ));
@@ -279,7 +372,7 @@ class CellTrackingService {
       // 4. 類似投稿への返信（優先度3、古い順）
       for (final reply in similarPost.replies) {
         postsWithPriority.add(_PostWithPriority(
-          post: reply.copyWith(kind: PostKind.land),
+          post: reply.copyWith(kind: PostKind.land, isTemporary: true),
           priority: 3,
           sortKey: reply.createdAt,
         ));
@@ -306,6 +399,8 @@ class CellTrackingService {
   void dispose() {
     _displayTimer?.cancel();
     _displayTimer = null;
+    _cleanupTimer?.cancel();
+    _cleanupTimer = null;
     _postsController?.close();
     _postsController = null;
   }

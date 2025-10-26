@@ -56,14 +56,30 @@ class BubbleManager {
     return height;
   }
 
+  /// 投稿と返信を展開してフラット化
+  List<Post> _flattenPosts(List<Post> posts) {
+    final flattened = <Post>[];
+    for (final post in posts) {
+      flattened.add(post);
+      // 返信を展開
+      if (post.replies.isNotEmpty) {
+        flattened.addAll(_flattenPosts(post.replies));
+      }
+    }
+    return flattened;
+  }
+
   /// 画面内の吹き出しを配置
   List<BubblePosition> layoutBubbles(
     List<Post> posts,
     ViewBounds viewBounds,
     String? currentUserId,
   ) {
+    // 投稿と返信を展開
+    final allPosts = _flattenPosts(posts);
+
     // 画面内の投稿のみフィルタリング
-    final visiblePosts = posts.where((post) =>
+    final visiblePosts = allPosts.where((post) =>
         post.lat >= viewBounds.south &&
         post.lat <= viewBounds.north &&
         post.lng >= viewBounds.west &&
@@ -89,22 +105,31 @@ class BubbleManager {
         height: height,
       );
     }).toList();
-    
+
     return bubblePositions;
   }
 
 
   /// 表示種別を決定
   BubbleDisplayKind determineDisplayKind(Post post, String? currentUserId) {
-    if (post.kind == PostKind.land) {
-      return BubbleDisplayKind.land;
+    // 返信の場合
+    if (post.parentPostId != null) {
+      // LLMの返信
+      if (post.kind == PostKind.land) {
+        return BubbleDisplayKind.landReply;
+      }
+      // 他のユーザーの返信
+      return BubbleDisplayKind.userReply;
     }
-    
+
+    // 親投稿の場合
+    // 自分の投稿
     if (post.userId == currentUserId) {
       return BubbleDisplayKind.me;
     }
-    
-    return BubbleDisplayKind.friend;
+
+    // 他人の投稿
+    return BubbleDisplayKind.other;
   }
 
 }
