@@ -1,10 +1,9 @@
 from typing import Any, cast
 
 from config.database import supabase
+from repositories.area_repository import create_area, get_area_by_name
 from schemas.db import DBCell
 from utils.geo_hash import decode_geo_hash, encode_geo_hash, get_area_name_from_geocode
-
-from repositories.area_repository import create_area, get_area_by_name
 
 
 def get_cell_by_id(cell_id: int) -> DBCell | None:
@@ -37,24 +36,25 @@ def get_or_create_cell(lat: float, lon: float) -> DBCell | None:
 
     # 既存のセルを検索
     db_cell = get_cell_by_geo_hash(geo_hash)
+    if db_cell:
+        return db_cell
 
-    if not db_cell:
-        # Google Mapsからエリア名を取得
-        area_name = get_area_name_from_geocode(lat, lon)
-        if not area_name:
-            return None
+    # Google Mapsからエリア名を取得
+    area_name = get_area_name_from_geocode(lat, lon)
+    if not area_name:
+        return None
 
-        # エリア名からエリア情報を検索
-        db_area = get_area_by_name(area_name)
-        if not db_area:
-            # エリアが存在しない場合は新規作成
-            db_area = create_area(name=area_name)
+    # エリア名からエリア情報を検索
+    db_area = get_area_by_name(area_name)
+    if not db_area:
+        # エリアが存在しない場合は新規作成
+        db_area = create_area(name=area_name)
 
-        # 新しいセルを作成
-        location_wkt = f"POINT({center_lon} {center_lat})"
-        db_cell = create_cell(
-            geo_hash=geo_hash, location_wkt=location_wkt, area_id=db_area.id
-        )
+    # 新しいセルを作成
+    location_wkt = f"POINT({center_lon} {center_lat})"
+    db_cell = create_cell(
+        geo_hash=geo_hash, location_wkt=location_wkt, area_id=db_area.id
+    )
     return db_cell
 
 
