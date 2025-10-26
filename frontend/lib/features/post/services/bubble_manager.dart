@@ -18,7 +18,7 @@ class ViewBounds {
 }
 
 class BubbleManager {
-  static const int maxBubbleCount = 30;
+  static const int maxBubbleCount = 15;
   static const double bubbleWidth = 200.0;
   static const double horizontalPadding = 20.0; // 左右のpadding合計
   static const double iconWidth = 22.0; // 土地の記憶アイコン + spacing
