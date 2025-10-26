@@ -1,4 +1,5 @@
 import 'package:latlong2/latlong.dart';
+
 import 'post.dart';
 
 /// 吹き出しの表示種別

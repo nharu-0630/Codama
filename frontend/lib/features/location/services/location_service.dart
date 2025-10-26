@@ -1,5 +1,6 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+
 import '../../../core/constants/location_config.dart';
 import '../../map/widgets/dev_tools/dev_location_service.dart';
 
@@ -15,7 +16,10 @@ class LocationService {
     if (DevLocationService.isDevToolsEnabled) {
       final virtualLocation = _devLocationService.getVirtualLocation();
       if (virtualLocation != null) {
-        LocationConfig.log(_logTag, '🎯 仮想位置を使用中: lat=${virtualLocation.latitude.toStringAsFixed(6)}, lng=${virtualLocation.longitude.toStringAsFixed(6)}');
+        LocationConfig.log(
+          _logTag,
+          '🎯 仮想位置を使用中: lat=${virtualLocation.latitude.toStringAsFixed(6)}, lng=${virtualLocation.longitude.toStringAsFixed(6)}',
+        );
         return virtualLocation;
       }
       LocationConfig.log(_logTag, '🛠️ 開発ツール有効、GPS位置情報を取得します');
@@ -24,7 +28,10 @@ class LocationService {
     try {
       // 1. 位置サービスが有効かチェック
       final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      LocationConfig.log(_logTag, '📡 位置サービス状態: ${serviceEnabled ? "有効" : "無効"}');
+      LocationConfig.log(
+        _logTag,
+        '📡 位置サービス状態: ${serviceEnabled ? "有効" : "無効"}',
+      );
 
       if (!serviceEnabled) {
         LocationConfig.log(_logTag, '⚠️ 位置サービスが無効のため、デフォルト位置を使用');
@@ -33,12 +40,18 @@ class LocationService {
 
       // 2. 現在の権限状態をチェック
       LocationPermission permission = await Geolocator.checkPermission();
-      LocationConfig.log(_logTag, '🔐 現在の権限状態: ${LocationConfig.permissionToString(permission)}');
+      LocationConfig.log(
+        _logTag,
+        '🔐 現在の権限状態: ${LocationConfig.permissionToString(permission)}',
+      );
 
       if (permission == LocationPermission.denied) {
         LocationConfig.log(_logTag, '📝 位置情報権限を要求中...');
         permission = await Geolocator.requestPermission();
-        LocationConfig.log(_logTag, '📝 権限要求結果: ${LocationConfig.permissionToString(permission)}');
+        LocationConfig.log(
+          _logTag,
+          '📝 権限要求結果: ${LocationConfig.permissionToString(permission)}',
+        );
 
         if (permission == LocationPermission.denied) {
           LocationConfig.log(_logTag, '❌ 位置情報権限が拒否されました。デフォルト位置を使用');
@@ -75,10 +88,7 @@ class LocationService {
 
       return location;
     } catch (e, stackTrace) {
-      LocationConfig.log(
-        _logTag,
-        '❌ 位置情報取得エラー: $e\nスタックトレース: $stackTrace',
-      );
+      LocationConfig.log(_logTag, '❌ 位置情報取得エラー: $e\nスタックトレース: $stackTrace');
       LocationConfig.log(_logTag, '🏢 デフォルト位置（横浜駅）を使用');
       return LocationConfig.defaultLocation;
     }
@@ -95,7 +105,9 @@ class LocationService {
         LocationConfig.log(_logTag, '🎯 仮想位置ストリームを開始');
         return Stream.periodic(
           const Duration(seconds: 1),
-          (_) => _devLocationService.getVirtualLocation() ?? LocationConfig.defaultLocation,
+          (_) =>
+              _devLocationService.getVirtualLocation() ??
+              LocationConfig.defaultLocation,
         );
       }
       LocationConfig.log(_logTag, '🛠️ 開発ツール有効、GPSストリームを開始します');
@@ -114,10 +126,7 @@ class LocationService {
           return location;
         })
         .handleError((error, stackTrace) {
-          LocationConfig.log(
-            _logTag,
-            '❌ ストリームエラー: $error',
-          );
+          LocationConfig.log(_logTag, '❌ ストリームエラー: $error');
           return LocationConfig.defaultLocation;
         });
   }
@@ -125,7 +134,10 @@ class LocationService {
   /// 権限状態をチェック
   Future<LocationPermission> checkPermissionStatus() async {
     final permission = await Geolocator.checkPermission();
-    LocationConfig.log(_logTag, '🔍 権限状態確認: ${LocationConfig.permissionToString(permission)}');
+    LocationConfig.log(
+      _logTag,
+      '🔍 権限状態確認: ${LocationConfig.permissionToString(permission)}',
+    );
     return permission;
   }
 
@@ -165,5 +177,4 @@ class LocationService {
 
   /// 開発ツールが有効かチェック
   bool get isDevToolsEnabled => DevLocationService.isDevToolsEnabled;
-
 }

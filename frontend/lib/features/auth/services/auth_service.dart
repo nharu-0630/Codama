@@ -1,10 +1,12 @@
 import 'dart:convert';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthService {
-  static String get _baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000';
+  static String get _baseUrl =>
+      dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000';
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userIdKey = 'user_id';
@@ -27,8 +29,10 @@ class AuthService {
       _accessToken = prefs.getString(_accessTokenKey);
       _refreshToken = prefs.getString(_refreshTokenKey);
       _userId = prefs.getString(_userIdKey);
-      
-      print('loadStoredTokens - accessToken: ${_accessToken?.substring(0, 20)}...');
+
+      print(
+        'loadStoredTokens - accessToken: ${_accessToken?.substring(0, 20)}...',
+      );
       print('loadStoredTokens - isAuthenticated: $isAuthenticated');
     } catch (e) {
       print('loadStoredTokens error: $e');
@@ -37,14 +41,20 @@ class AuthService {
     }
   }
 
-  Future<void> _saveTokens(String accessToken, String refreshToken, String userId) async {
+  Future<void> _saveTokens(
+    String accessToken,
+    String refreshToken,
+    String userId,
+  ) async {
     // まずメモリ上に保存（必ず成功）
     _accessToken = accessToken;
     _refreshToken = refreshToken;
     _userId = userId;
-    
-    print('Tokens saved to memory - accessToken: ${accessToken.substring(0, 20)}...');
-    
+
+    print(
+      'Tokens saved to memory - accessToken: ${accessToken.substring(0, 20)}...',
+    );
+
     // SharedPreferencesにも保存を試行（失敗してもエラーにしない）
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -72,17 +82,21 @@ class AuthService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         print('Signup response data keys: ${data.keys.toList()}');
-        
+
         await _saveTokens(
           data['access_token'],
           data['refresh_token'],
           data['user_id'],
         );
-        print('Signup success - access_token: ${data['access_token']?.substring(0, 20)}...');
+        print(
+          'Signup success - access_token: ${data['access_token']?.substring(0, 20)}...',
+        );
         print('Signup success - saved isAuthenticated: $isAuthenticated');
         return true;
       }
-      print('Signup failed with status: ${response.statusCode}, body: ${response.body}');
+      print(
+        'Signup failed with status: ${response.statusCode}, body: ${response.body}',
+      );
       return false;
     } catch (e) {
       print('Signup error: $e');
@@ -95,7 +109,7 @@ class AuthService {
     _accessToken = null;
     _refreshToken = null;
     _userId = null;
-    
+
     // SharedPreferencesからも削除を試行
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -137,7 +151,8 @@ class AuthService {
         final data = json.decode(response.body);
         await _saveTokens(
           data['access_token'],
-          data['refresh_token'] ?? _refreshToken!, // fallback to existing refresh token
+          data['refresh_token'] ??
+              _refreshToken!, // fallback to existing refresh token
           data['user_id'] ?? _userId!, // fallback to existing user_id
         );
         print('Token refresh success');
@@ -157,10 +172,11 @@ class AuthService {
       return await action();
     } catch (e) {
       // 認証エラーの場合、リフレッシュを試行
-      if (e.toString().contains('authorization') || e.toString().contains('401')) {
+      if (e.toString().contains('authorization') ||
+          e.toString().contains('401')) {
         print('Authentication error detected, attempting refresh...');
         final refreshSuccess = await refreshToken();
-        
+
         if (refreshSuccess) {
           print('Token refreshed, retrying action...');
           return await action();
@@ -178,7 +194,7 @@ class AuthService {
 class AuthenticationRequiredException implements Exception {
   final String message;
   AuthenticationRequiredException(this.message);
-  
+
   @override
   String toString() => message;
 }

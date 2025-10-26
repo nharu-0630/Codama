@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/post.dart';
+
 import '../models/bubble_position.dart';
+import '../models/post.dart';
 
 class BubbleWidget extends StatelessWidget {
   final Post post;
@@ -26,7 +27,9 @@ class BubbleWidget extends StatelessWidget {
     final baseBubbleColor = switch (displayKind) {
       BubbleDisplayKind.me => Colors.blue.shade100,
       BubbleDisplayKind.other => Colors.green.shade100,
-      BubbleDisplayKind.landReply => Colors.purple.shade50.withValues(alpha: 0.9),
+      BubbleDisplayKind.landReply => Colors.purple.shade50.withValues(
+        alpha: 0.9,
+      ),
       BubbleDisplayKind.userReply => Colors.orange.shade100,
     };
 
@@ -55,10 +58,7 @@ class BubbleWidget extends StatelessWidget {
         width: double.infinity,
         height: double.infinity,
         child: Container(
-          constraints: const BoxConstraints(
-            minWidth: 60,
-            maxWidth: 200,
-          ),
+          constraints: const BoxConstraints(minWidth: 60, maxWidth: 200),
           child: CustomPaint(
             painter: BubblePainter(
               bubbleColor: bubbleColor,
@@ -110,10 +110,7 @@ class BubblePainter extends CustomPainter {
   final Color bubbleColor;
   final Color borderColor;
 
-  BubblePainter({
-    required this.bubbleColor,
-    required this.borderColor,
-  });
+  BubblePainter({required this.bubbleColor, required this.borderColor});
 
   @override
   void paint(Canvas canvas, Size size) {

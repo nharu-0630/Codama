@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+
 import '../../../../core/constants/location_config.dart';
 
 /// 開発用ジョイスティック

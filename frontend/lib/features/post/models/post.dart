@@ -8,9 +8,9 @@ class Post {
   final String text;
   final DateTime createdAt;
   final String? userId;
-  final List<Post> replies;  // 土地の記憶からの返信投稿リスト
-  final String? parentPostId;  // この投稿がどの投稿への返信かを示すID
-  final bool isTemporary;  // 一時投稿かどうか（5秒で消える投稿）
+  final List<Post> replies; // 土地の記憶からの返信投稿リスト
+  final String? parentPostId; // この投稿がどの投稿への返信かを示すID
+  final bool isTemporary; // 一時投稿かどうか（5秒で消える投稿）
 
   const Post({
     required this.id,
@@ -51,23 +51,31 @@ class Post {
     );
   }
 
-  factory Post.fromApiResponse(Map<String, dynamic> data, {String? parentPostId}) {
+  factory Post.fromApiResponse(
+    Map<String, dynamic> data, {
+    String? parentPostId,
+  }) {
     final location = data['location'] as List?;
     final postId = data['uuid'] as String;
 
     // 返信が土地の記憶からのものかを判定
     // APIから is_land_memory フラグが来る場合はそれを使用
     // なければ、repliesリスト内で user_id が null または 'land_memory' の場合を土地の記憶と判定
-    final isLandMemory = data['is_land_memory'] == true ||
-                         (parentPostId != null && data['user_id'] == null);
+    final isLandMemory =
+        data['is_land_memory'] == true ||
+        (parentPostId != null && data['user_id'] == null);
 
     // repliesを再帰的にパース（親投稿IDを設定）
-    final repliesList = (data['replies'] as List?)
-        ?.map((replyData) => Post.fromApiResponse(
-          replyData as Map<String, dynamic>,
-          parentPostId: postId,
-        ))
-        .toList() ?? [];
+    final repliesList =
+        (data['replies'] as List?)
+            ?.map(
+              (replyData) => Post.fromApiResponse(
+                replyData as Map<String, dynamic>,
+                parentPostId: postId,
+              ),
+            )
+            .toList() ??
+        [];
 
     return Post(
       id: postId,

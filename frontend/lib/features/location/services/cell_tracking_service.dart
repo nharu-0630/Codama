@@ -1,21 +1,20 @@
 import 'dart:async';
+
 import 'package:latlong2/latlong.dart';
-import 'location_api_service.dart';
-import '../../auth/services/auth_service.dart';
-import '../../post/services/post_service.dart';
-import '../../post/models/post.dart';
-import '../../post/models/create_post_response.dart';
+
 import '../../../core/constants/location_config.dart';
+import '../../auth/services/auth_service.dart';
+import '../../post/models/create_post_response.dart';
+import '../../post/models/post.dart';
+import '../../post/services/post_service.dart';
+import 'location_api_service.dart';
 
 /// 一時投稿（5秒で消える投稿）を保持するクラス
 class TemporaryPost {
   final Post post;
   final DateTime displayStartTime;
 
-  TemporaryPost({
-    required this.post,
-    required this.displayStartTime,
-  });
+  TemporaryPost({required this.post, required this.displayStartTime});
 }
 
 class CellTrackingService {
@@ -34,7 +33,9 @@ class CellTrackingService {
   Stream<List<Post>>? get postsStream => _postsController?.stream;
 
   static const Duration displayInterval = Duration(milliseconds: 500); // 表示間隔
-  static const Duration temporaryPostLifetime = Duration(seconds: 5); // 一時投稿の有効期限
+  static const Duration temporaryPostLifetime = Duration(
+    seconds: 5,
+  ); // 一時投稿の有効期限
   static const Duration cleanupInterval = Duration(seconds: 1); // クリーンアップ間隔
 
   Future<void> initialize() async {
@@ -153,7 +154,8 @@ class CellTrackingService {
         '📱 セル情報取得: ${locationData.cell.geoHash} (ID: ${locationData.cell.id})',
       );
 
-      final isCellChanged = _currentCell == null || _currentCell != locationData.cell;
+      final isCellChanged =
+          _currentCell == null || _currentCell != locationData.cell;
       final needsMorePosts = _displayedPosts.length < 10;
 
       if (isCellChanged) {
@@ -176,10 +178,7 @@ class CellTrackingService {
         );
       }
     } catch (e) {
-      LocationConfig.log(
-        'CellTrackingService',
-        '❌ onLocationChangedエラー: $e',
-      );
+      LocationConfig.log('CellTrackingService', '❌ onLocationChangedエラー: $e');
       // エラー時は現在の表示状態を保持（一時投稿も含む）
       _broadcastAllPosts();
     }
@@ -202,10 +201,7 @@ class CellTrackingService {
       // 新しい投稿を表示待ちキューに追加（重複チェック付き）
       _addPostsToQueue(newPosts);
     } catch (e) {
-      LocationConfig.log(
-        'CellTrackingService',
-        '❌ 投稿取得エラー: $e',
-      );
+      LocationConfig.log('CellTrackingService', '❌ 投稿取得エラー: $e');
     }
   }
 
@@ -218,7 +214,9 @@ class CellTrackingService {
     };
 
     // 重複していない投稿のみをキューに追加
-    final uniquePosts = newPosts.where((p) => !existingIds.contains(p.id)).toList();
+    final uniquePosts = newPosts
+        .where((p) => !existingIds.contains(p.id))
+        .toList();
 
     if (uniquePosts.isEmpty) {
       return;
@@ -241,10 +239,7 @@ class CellTrackingService {
     final now = DateTime.now();
     for (final post in newPosts) {
       if (!existingIds.contains(post.id)) {
-        _temporaryPosts.add(TemporaryPost(
-          post: post,
-          displayStartTime: now,
-        ));
+        _temporaryPosts.add(TemporaryPost(post: post, displayStartTime: now));
       }
     }
 
@@ -263,10 +258,7 @@ class CellTrackingService {
     required double lng,
     required String text,
   }) async {
-    LocationConfig.log(
-      'CellTrackingService',
-      '✏️ 投稿作成開始: "$text"',
-    );
+    LocationConfig.log('CellTrackingService', '✏️ 投稿作成開始: "$text"');
 
     // 1. 一時的な投稿を作成
     final optimisticPost = Post(
@@ -321,10 +313,7 @@ class CellTrackingService {
         '✅ 投稿作成完了: 一時投稿${_temporaryPosts.length}件',
       );
     } catch (e) {
-      LocationConfig.log(
-        'CellTrackingService',
-        '❌ 投稿作成API失敗: $e',
-      );
+      LocationConfig.log('CellTrackingService', '❌ 投稿作成API失敗: $e');
       // API失敗時は楽観的投稿を削除
       _displayedPosts.removeWhere((p) => p.id == optimisticPost.id);
       _pendingPosts.removeWhere((p) => p.id == optimisticPost.id);
@@ -346,36 +335,44 @@ class CellTrackingService {
       isTemporary: true,
     );
 
-    postsWithPriority.add(_PostWithPriority(
-      post: createdPost,
-      priority: 0,
-      sortKey: createdPost.createdAt,
-    ));
+    postsWithPriority.add(
+      _PostWithPriority(
+        post: createdPost,
+        priority: 0,
+        sortKey: createdPost.createdAt,
+      ),
+    );
 
     // 2. 作成された投稿への返信（優先度1、古い順）
     for (final reply in createdPost.replies) {
-      postsWithPriority.add(_PostWithPriority(
-        post: reply.copyWith(kind: PostKind.land, isTemporary: true),
-        priority: 1,
-        sortKey: reply.createdAt,
-      ));
+      postsWithPriority.add(
+        _PostWithPriority(
+          post: reply.copyWith(kind: PostKind.land, isTemporary: true),
+          priority: 1,
+          sortKey: reply.createdAt,
+        ),
+      );
     }
 
     // 3. 類似投稿（優先度2、古い順）
     for (final similarPost in response.similarPosts) {
-      postsWithPriority.add(_PostWithPriority(
-        post: similarPost.copyWith(isTemporary: true),
-        priority: 2,
-        sortKey: similarPost.createdAt,
-      ));
+      postsWithPriority.add(
+        _PostWithPriority(
+          post: similarPost.copyWith(isTemporary: true),
+          priority: 2,
+          sortKey: similarPost.createdAt,
+        ),
+      );
 
       // 4. 類似投稿への返信（優先度3、古い順）
       for (final reply in similarPost.replies) {
-        postsWithPriority.add(_PostWithPriority(
-          post: reply.copyWith(kind: PostKind.land, isTemporary: true),
-          priority: 3,
-          sortKey: reply.createdAt,
-        ));
+        postsWithPriority.add(
+          _PostWithPriority(
+            post: reply.copyWith(kind: PostKind.land, isTemporary: true),
+            priority: 3,
+            sortKey: reply.createdAt,
+          ),
+        );
       }
     }
 

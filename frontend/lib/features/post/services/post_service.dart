@@ -1,14 +1,17 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../models/post.dart';
-import '../models/create_post_response.dart';
-import '../../auth/services/auth_service.dart';
+import 'package:http/http.dart' as http;
+
 import '../../../core/constants/location_config.dart';
+import '../../auth/services/auth_service.dart';
+import '../models/create_post_response.dart';
+import '../models/post.dart';
 
 /// 投稿サービス
 class PostService {
-  static String get _baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000';
+  static String get _baseUrl =>
+      dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000';
   final AuthService _authService = AuthService();
 
   /// 投稿作成
@@ -17,16 +20,14 @@ class PostService {
     required double lng,
     required String text,
   }) async {
-    return await _authService.withAuth(() =>
-      _createPostApi(lat: lat, lng: lng, text: text)
+    return await _authService.withAuth(
+      () => _createPostApi(lat: lat, lng: lng, text: text),
     );
   }
 
   /// 位置に基づく投稿取得
   Future<List<Post>> getPostsByLocation(double lat, double lon) async {
-    return await _authService.withAuth(() =>
-      _getPostsByLocationApi(lat, lon)
-    );
+    return await _authService.withAuth(() => _getPostsByLocationApi(lat, lon));
   }
 
   // =============
@@ -43,11 +44,7 @@ class PostService {
     }
 
     final uri = Uri.parse('$_baseUrl/posts');
-    final requestBody = {
-      'content': text,
-      'lat': lat,
-      'lon': lng,
-    };
+    final requestBody = {'content': text, 'lat': lat, 'lon': lng};
 
     final response = await http.post(
       uri,
@@ -68,29 +65,20 @@ class PostService {
   Future<List<Post>> _getPostsByLocationApi(double lat, double lon) async {
     final uri = Uri.parse('$_baseUrl/posts?lat=$lat&lon=$lon');
 
-    LocationConfig.log(
-      'PostService',
-      '🌐 API呼び出し: GET $uri',
-    );
+    LocationConfig.log('PostService', '🌐 API呼び出し: GET $uri');
 
     final response = await http.get(
       uri,
       headers: _authService.getAuthHeaders(),
     );
 
-    LocationConfig.log(
-      'PostService',
-      '📡 API応答: ステータス ${response.statusCode}',
-    );
+    LocationConfig.log('PostService', '📡 API応答: ステータス ${response.statusCode}');
 
     if (response.statusCode == 200) {
       final responseData = json.decode(response.body);
       final List<dynamic> posts = responseData['posts'];
 
-      LocationConfig.log(
-        'PostService',
-        '✅ 投稿取得成功: ${posts.length}件の投稿',
-      );
+      LocationConfig.log('PostService', '✅ 投稿取得成功: ${posts.length}件の投稿');
 
       return posts.map((data) => Post.fromApiResponse(data)).toList();
     } else {

@@ -1,6 +1,7 @@
 import 'package:latlong2/latlong.dart';
-import '../models/post.dart';
+
 import '../models/bubble_position.dart';
+import '../models/post.dart';
 
 class ViewBounds {
   final double north;
@@ -28,7 +29,8 @@ class BubbleManager {
   /// テキストから吹き出しの高さを計算
   double calculateBubbleHeight(Post post) {
     final isLandMemory = post.kind == PostKind.land;
-    final effectiveWidth = bubbleWidth - horizontalPadding - (isLandMemory ? iconWidth : 0);
+    final effectiveWidth =
+        bubbleWidth - horizontalPadding - (isLandMemory ? iconWidth : 0);
 
     // 1行あたりの文字数を推定（日本語は文字幅が大きいため少なめに）
     final charsPerLine = (effectiveWidth / (fontSize * 0.7)).floor();
@@ -51,7 +53,9 @@ class BubbleManager {
     // 高さを計算: 基本高さ + (追加行数 × 行の高さ)
     final height = baseHeight + ((estimatedLines - 1) * lineHeight);
 
-    print('🎯 [BubbleManager] kind=${post.kind}, textLen=${post.text.length}, actualLines=${lines.length}, estimatedLines=$estimatedLines, height=$height, text="${post.text.substring(0, post.text.length > 20 ? 20 : post.text.length).replaceAll('\n', '\\n')}..."');
+    print(
+      '🎯 [BubbleManager] kind=${post.kind}, textLen=${post.text.length}, actualLines=${lines.length}, estimatedLines=$estimatedLines, height=$height, text="${post.text.substring(0, post.text.length > 20 ? 20 : post.text.length).replaceAll('\n', '\\n')}..."',
+    );
 
     return height;
   }
@@ -79,11 +83,15 @@ class BubbleManager {
     final allPosts = _flattenPosts(posts);
 
     // 画面内の投稿のみフィルタリング
-    final visiblePosts = allPosts.where((post) =>
-        post.lat >= viewBounds.south &&
-        post.lat <= viewBounds.north &&
-        post.lng >= viewBounds.west &&
-        post.lng <= viewBounds.east).toList();
+    final visiblePosts = allPosts
+        .where(
+          (post) =>
+              post.lat >= viewBounds.south &&
+              post.lat <= viewBounds.north &&
+              post.lng >= viewBounds.west &&
+              post.lng <= viewBounds.east,
+        )
+        .toList();
 
     // 投稿を作成日時でソート（新しい順）
     visiblePosts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -109,7 +117,6 @@ class BubbleManager {
     return bubblePositions;
   }
 
-
   /// 表示種別を決定
   BubbleDisplayKind determineDisplayKind(Post post, String? currentUserId) {
     // 返信の場合
@@ -131,5 +138,4 @@ class BubbleManager {
     // 他人の投稿
     return BubbleDisplayKind.other;
   }
-
 }

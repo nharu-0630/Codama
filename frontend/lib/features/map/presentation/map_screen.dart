@@ -1,23 +1,24 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../location/services/location_service.dart';
-import '../../location/services/live_location_controller.dart';
-import '../../location/services/cell_tracking_service.dart';
+
 import '../../../core/constants/location_config.dart';
-import '../widgets/dev_tools/dev_joystick.dart';
-import '../widgets/dev_tools/dev_location_service.dart';
-import '../../post/models/post.dart';
+import '../../auth/services/auth_service.dart';
+import '../../auth/widgets/signup_modal.dart';
+import '../../location/services/cell_tracking_service.dart';
+import '../../location/services/live_location_controller.dart';
+import '../../location/services/location_service.dart';
 import '../../post/models/bubble_position.dart';
+import '../../post/models/post.dart';
 import '../../post/services/bubble_manager.dart';
 import '../../post/widgets/bubble_widget.dart';
 import '../../post/widgets/create_post_dialog.dart';
-import '../../auth/services/auth_service.dart';
-import '../../auth/widgets/signup_modal.dart';
+import '../widgets/dev_tools/dev_joystick.dart';
+import '../widgets/dev_tools/dev_location_service.dart';
 
 // 水彩画風　stamen_watercolor
 const _styleUrl =
@@ -99,14 +100,16 @@ class _MapScreenState extends State<MapScreen> {
 
       // 認証されていない場合はサインアップモーダルを表示
       if (!_authService.isAuthenticated) {
-        LocationConfig.log(LocationConfig.mapScreenTag, '🔒 認証が必要です、サインアップモーダルを表示');
+        LocationConfig.log(
+          LocationConfig.mapScreenTag,
+          '🔒 認証が必要です、サインアップモーダルを表示',
+        );
         _showSignupModal();
         return;
       }
 
       // 認証済みの場合はサービスを初期化
       await _initializeCellTracking();
-
     } catch (e) {
       LocationConfig.log(LocationConfig.mapScreenTag, '❌ 認証チェックエラー: $e');
       _showSignupModal();
@@ -130,10 +133,7 @@ class _MapScreenState extends State<MapScreen> {
         );
       });
     } catch (e) {
-      LocationConfig.log(
-        LocationConfig.mapScreenTag,
-        '❌ セル追跡サービス初期化エラー: $e',
-      );
+      LocationConfig.log(LocationConfig.mapScreenTag, '❌ セル追跡サービス初期化エラー: $e');
     }
   }
 
@@ -144,13 +144,15 @@ class _MapScreenState extends State<MapScreen> {
       barrierDismissible: false,
       builder: (context) => SignupModal(
         onSuccess: () async {
-          LocationConfig.log(LocationConfig.mapScreenTag, '✅ サインアップ成功、サービスを初期化');
+          LocationConfig.log(
+            LocationConfig.mapScreenTag,
+            '✅ サインアップ成功、サービスを初期化',
+          );
           await _initializeCellTracking();
         },
       ),
     );
   }
-
 
   /// 特定座標に投稿を作成（楽観的UI更新）
   Future<void> createPostAtLocation({
@@ -170,13 +172,17 @@ class _MapScreenState extends State<MapScreen> {
 
       LocationConfig.log(LocationConfig.mapScreenTag, '✅ 投稿作成成功: $text');
     } on AuthenticationRequiredException catch (e) {
-      LocationConfig.log(LocationConfig.mapScreenTag, '🔒 認証エラー、サインアップモーダルを表示: $e');
+      LocationConfig.log(
+        LocationConfig.mapScreenTag,
+        '🔒 認証エラー、サインアップモーダルを表示: $e',
+      );
       _showSignupModal();
     } catch (e) {
       LocationConfig.log(LocationConfig.mapScreenTag, '❌ 投稿作成エラー: $e');
-      
+
       // 認証関連のエラーの場合はサインアップモーダルを表示
-      if (e.toString().contains('認証') || e.toString().contains('authorization')) {
+      if (e.toString().contains('認証') ||
+          e.toString().contains('authorization')) {
         _showSignupModal();
       } else {
         // その他のエラーは再スロー
@@ -275,24 +281,22 @@ class _MapScreenState extends State<MapScreen> {
   /// 投稿詳細を表示
   void _showPostDetail(Post post) {
     final isLandMemory = post.kind == PostKind.land;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Row(
           children: [
             if (isLandMemory) ...[
-              Icon(
-                Icons.auto_awesome,
-                color: Colors.purple.shade400,
-                size: 20,
-              ),
+              Icon(Icons.auto_awesome, color: Colors.purple.shade400, size: 20),
               const SizedBox(width: 8),
             ],
             Text(
               isLandMemory ? '土地の記憶' : 'ユーザー投稿',
               style: TextStyle(
-                color: isLandMemory ? Colors.purple.shade700 : Colors.blue.shade700,
+                color: isLandMemory
+                    ? Colors.purple.shade700
+                    : Colors.blue.shade700,
               ),
             ),
           ],

@@ -66,10 +66,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: const Color(0xFFE8D5C4), // 薄い茶色
-      title: const Text(
-        'あなたの心の声を聞かせて',
-        style: TextStyle(fontSize: 16),
-      ),
+      title: const Text('あなたの心の声を聞かせて', style: TextStyle(fontSize: 16)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

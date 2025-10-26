@@ -1,7 +1,9 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+
 import '../../../core/constants/location_config.dart';
 import '../../map/widgets/dev_tools/dev_location_service.dart';
 

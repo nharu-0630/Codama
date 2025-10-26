@@ -1,8 +1,10 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../../../features/auth/services/auth_service.dart';
+import 'package:http/http.dart' as http;
+
 import '../../../core/constants/location_config.dart';
+import '../../../features/auth/services/auth_service.dart';
 
 class LocationData {
   final Area area;
@@ -25,10 +27,7 @@ class Area {
   Area({required this.id, required this.name});
 
   factory Area.fromJson(Map<String, dynamic> json) {
-    return Area(
-      id: json['id'],
-      name: json['name'],
-    );
+    return Area(id: json['id'], name: json['name']);
   }
 }
 
@@ -58,16 +57,14 @@ class Cell {
 }
 
 class LocationApiService {
-  static String get _baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000';
+  static String get _baseUrl =>
+      dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000';
   final AuthService _authService = AuthService();
 
   Future<LocationData?> getCurrentLocation(double lat, double lon) async {
     final uri = Uri.parse('$_baseUrl/current?lat=$lat&lon=$lon');
 
-    LocationConfig.log(
-      'LocationApiService',
-      '🌐 API呼び出し: GET $uri',
-    );
+    LocationConfig.log('LocationApiService', '🌐 API呼び出し: GET $uri');
 
     try {
       final response = await http.get(
@@ -99,10 +96,7 @@ class LocationApiService {
 
       return null;
     } catch (e) {
-      LocationConfig.log(
-        'LocationApiService',
-        '❌ セル情報取得エラー: $e',
-      );
+      LocationConfig.log('LocationApiService', '❌ セル情報取得エラー: $e');
       return null;
     }
   }
