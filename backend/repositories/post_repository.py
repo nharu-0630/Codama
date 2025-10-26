@@ -1,6 +1,8 @@
 from typing import Any, cast
 from uuid import UUID
 
+import geohash  # type: ignore
+
 from config.database import supabase
 from schemas.db import DBLLMPost, DBUserPost
 
@@ -37,14 +39,20 @@ def get_llm_posts_by_user_post_uuid(user_post_uuid: str) -> list[DBLLMPost]:
 
 
 def get_user_posts_by_location(geo_hash: str) -> list[DBUserPost]:
-    """ジオハッシュで指定した位置の投稿一覧を取得"""
-    # ジオハッシュの前方一致で検索（セルテーブルをinner join）
-    posts = (
+    """ジオハッシュで指定した位置とその隣接8セル（合計9セル）の投稿一覧を取得"""
+    # 中心のgeohashと隣接8セルのgeohashを取得
+    neighbor_hashes = geohash.neighbors(geo_hash)  # type: ignore
+    geo_hashes = [geo_hash] + neighbor_hashes  # type: ignore
+
+    # 9つのgeohashの投稿を検索
+    query = (
         supabase.from_("user_posts")
         .select("*, cells!inner(id, geo_hash)")
-        .like("cells.geo_hash", f"{geo_hash}%")
-        .execute()
+        .in_("cells.geo_hash", geo_hashes)  # type: ignore
     )
+
+    posts = query.execute()
+
     # 取得したデータをDBUserPostモデルのリストに変換
     data = cast(list[dict[str, Any]], posts.data)
     return [DBUserPost(**item) for item in data]

@@ -1,4 +1,4 @@
-import pygeohash as gh  # type: ignore
+import geohash  # type: ignore
 from shapely import wkb
 from shapely.geometry import Point
 
@@ -8,13 +8,13 @@ from config.settings import settings
 
 def encode_geo_hash(lat: float, lon: float) -> str:
     """緯度経度をジオハッシュにエンコード"""
-    return gh.encode(lat, lon, precision=settings.GEO_HASH_PRECISION)
+    return str(geohash.encode(lat, lon, settings.GEO_HASH_PRECISION))  # type: ignore
 
 
 def decode_geo_hash(geo_hash: str) -> tuple[float, float]:
     """ジオハッシュを緯度経度にデコード"""
-    pos = gh.decode(geo_hash)
-    return pos.latitude, pos.longitude
+    pos = geohash.decode(geo_hash)  # type: ignore
+    return float(pos[0]), float(pos[1])  # type: ignore
 
 
 def decode_wkt_location(location_wkt: str) -> tuple[float, float]:

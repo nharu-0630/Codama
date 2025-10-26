@@ -1,11 +1,9 @@
 from typing import Any, cast
 
-import pygeohash as gh  # type: ignore
-
 from config.database import supabase
 from repositories.area_repository import create_area, get_area_by_name
 from schemas.db import DBCell
-from utils.geo_hash import encode_geo_hash, get_area_name_from_geocode
+from utils.geo_hash import decode_geo_hash, encode_geo_hash, get_area_name_from_geocode
 
 
 def get_cell_by_id(cell_id: int) -> DBCell | None:
@@ -34,7 +32,7 @@ def get_or_create_cell(lat: float, lon: float) -> DBCell | None:
     """指定された座標のセルを取得、存在しない場合は新規作成"""
     # 緯度経度からジオハッシュを生成
     geo_hash = encode_geo_hash(lat, lon)
-    center_pos = gh.decode(geo_hash)
+    center_lat, center_lon = decode_geo_hash(geo_hash)
 
     # 既存のセルを検索
     db_cell = get_cell_by_geo_hash(geo_hash)
@@ -52,7 +50,7 @@ def get_or_create_cell(lat: float, lon: float) -> DBCell | None:
             db_area = create_area(name=area_name)
 
         # 新しいセルを作成
-        location_wkt = f"POINT({center_pos.longitude} {center_pos.latitude})"
+        location_wkt = f"POINT({center_lon} {center_lat})"
         db_cell = create_cell(
             geo_hash=geo_hash, location_wkt=location_wkt, area_id=db_area.id
         )
