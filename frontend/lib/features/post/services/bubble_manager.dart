@@ -96,10 +96,17 @@ class BubbleManager {
     // 投稿を作成日時でソート（新しい順）
     visiblePosts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    // 最大数に制限
-    final limitedPosts = visiblePosts.length > maxBubbleCount
-        ? visiblePosts.take(maxBubbleCount).toList()
-        : visiblePosts;
+    // 通常投稿と一時投稿を分離
+    final regularPosts = visiblePosts.where((p) => !p.isTemporary).toList();
+    final temporaryPosts = visiblePosts.where((p) => p.isTemporary).toList();
+
+    // 通常投稿のみ最大数に制限
+    final limitedRegularPosts = regularPosts.length > maxBubbleCount
+        ? regularPosts.take(maxBubbleCount).toList()
+        : regularPosts;
+
+    // 制限された通常投稿と全ての一時投稿を結合
+    final limitedPosts = [...limitedRegularPosts, ...temporaryPosts];
 
     // BubblePosition作成（座標調整なし）
     final bubblePositions = limitedPosts.map((post) {
