@@ -23,7 +23,9 @@ class CellTrackingService {
   final PostService _postService = PostService();
 
   Cell? _currentCell;
+  String? _currentAreaName;
   StreamController<List<Post>>? _postsController;
+  StreamController<String?>? _areaNameController;
   List<Post> _displayedPosts = []; // 画面に表示されている投稿
   List<Post> _pendingPosts = []; // 表示待ちキュー
   List<TemporaryPost> _temporaryPosts = []; // 一時投稿（5秒で消える）
@@ -31,6 +33,8 @@ class CellTrackingService {
   Timer? _cleanupTimer;
 
   Stream<List<Post>>? get postsStream => _postsController?.stream;
+  Stream<String?>? get areaNameStream => _areaNameController?.stream;
+  String? get currentAreaName => _currentAreaName;
 
   static const Duration displayInterval = Duration(milliseconds: 500); // 表示間隔
   static const Duration temporaryPostLifetime = Duration(
@@ -48,6 +52,7 @@ class CellTrackingService {
     }
 
     _postsController = StreamController<List<Post>>.broadcast();
+    _areaNameController = StreamController<String?>.broadcast();
     _startDisplayTimer();
     _startCleanupTimer();
   }
@@ -104,6 +109,12 @@ class CellTrackingService {
       );
       if (current == null) {
         return;
+      }
+
+      // エリア名が変わったら通知
+      if (_currentAreaName != current.area.name) {
+        _currentAreaName = current.area.name;
+        _areaNameController?.add(_currentAreaName);
       }
 
       if (_currentCell == null || _currentCell != current.cell) {
@@ -243,6 +254,8 @@ class CellTrackingService {
     _cleanupTimer = null;
     _postsController?.close();
     _postsController = null;
+    _areaNameController?.close();
+    _areaNameController = null;
   }
 }
 

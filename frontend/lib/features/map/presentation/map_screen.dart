@@ -44,6 +44,7 @@ class _MapScreenState extends State<MapScreen> {
   final AuthService _authService = AuthService();
   LatLng? _currentLocation;
   String _locationStatus = '位置情報未取得';
+  String? _currentAreaName;
   double? _lastZoomLevel;
 
   // 開発ツール関連
@@ -130,6 +131,17 @@ class _MapScreenState extends State<MapScreen> {
         LocationConfig.log(
           LocationConfig.mapScreenTag,
           '📱 セル変更により投稿を更新しました: ${posts.length}件',
+        );
+      });
+
+      // エリア名ストリームを監視
+      _cellTrackingService.areaNameStream?.listen((areaName) {
+        setState(() {
+          _currentAreaName = areaName;
+        });
+        LocationConfig.log(
+          LocationConfig.mapScreenTag,
+          '🏙️ エリア名を更新しました: $areaName',
         );
       });
     } catch (e) {
@@ -414,6 +426,17 @@ class _MapScreenState extends State<MapScreen> {
     final apiKey = dotenv.env['STADIA_API_KEY'] ?? '';
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(_currentAreaName ?? '位置情報取得中...'),
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 25,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
       body: Stack(
         children: [
           // 地図表示
@@ -507,9 +530,12 @@ class _MapScreenState extends State<MapScreen> {
             Positioned(
               bottom: 16,
               left: 16,
-              child: DevJoystick(
-                currentLocation: _virtualLocation,
-                onLocationChange: _onVirtualLocationChange,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: DevJoystick(
+                  currentLocation: _virtualLocation,
+                  onLocationChange: _onVirtualLocationChange,
+                ),
               ),
             ),
 
