@@ -58,87 +58,81 @@ class BubbleWidget extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: SizedBox(
-        width: double.infinity,
-        height: double.infinity,
-        child: Container(
-          constraints: const BoxConstraints(minWidth: 60, maxWidth: 200),
-          child: CustomPaint(
-            painter: BubblePainter(
-              bubbleColor: bubbleColor,
-              borderColor: borderColor,
-            ),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(10, 3, 10, 6),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // LLMの返信の場合はアイコンを表示
-                  if (displayKind == BubbleDisplayKind.landReply) ...[
-                    Icon(
-                      Icons.auto_awesome,
-                      color: Colors.purple.shade400,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  Expanded(
-                    child: showContent
-                        ? Text(
-                            post.text,
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 14,
-                              fontWeight:
-                                  displayKind == BubbleDisplayKind.landReply
-                                      ? FontWeight.w400
-                                      : FontWeight.w500,
-                              fontStyle:
-                                  displayKind == BubbleDisplayKind.landReply
-                                      ? FontStyle.italic
-                                      : FontStyle.normal,
-                            ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                          )
-                        : Stack(
-                            children: [
-                              Text(
-                                post.text,
-                                style: TextStyle(
-                                  color: textColor,
-                                  fontSize: 14,
-                                  fontWeight:
-                                      displayKind == BubbleDisplayKind.landReply
-                                          ? FontWeight.w400
-                                          : FontWeight.w500,
-                                  fontStyle:
-                                      displayKind == BubbleDisplayKind.landReply
-                                          ? FontStyle.italic
-                                          : FontStyle.normal,
-                                ),
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Positioned.fill(
-                                child: ClipRect(
-                                  child: BackdropFilter(
-                                    filter: ImageFilter.blur(
-                                      sigmaX: 3.0,
-                                      sigmaY: 3.0,
-                                    ),
-                                    child: Container(
-                                      color: Colors.transparent,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 60, maxWidth: 200),
+        child: CustomPaint(
+          painter: BubblePainter(
+            bubbleColor: bubbleColor,
+            borderColor: borderColor,
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(10, 3, 10, 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // LLMの返信の場合はアイコンを表示
+                if (displayKind == BubbleDisplayKind.landReply) ...[
+                  Icon(
+                    Icons.auto_awesome,
+                    color: Colors.purple.shade400,
+                    size: 16,
                   ),
+                  const SizedBox(width: 6),
                 ],
-              ),
+                Flexible(
+                  child: showContent
+                      ? Text(
+                          post.text,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 14,
+                            fontWeight:
+                                displayKind == BubbleDisplayKind.landReply
+                                ? FontWeight.w400
+                                : FontWeight.w500,
+                            fontStyle:
+                                displayKind == BubbleDisplayKind.landReply
+                                ? FontStyle.italic
+                                : FontStyle.normal,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      : Stack(
+                          children: [
+                            Text(
+                              post.text,
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 14,
+                                fontWeight:
+                                    displayKind == BubbleDisplayKind.landReply
+                                    ? FontWeight.w400
+                                    : FontWeight.w500,
+                                fontStyle:
+                                    displayKind == BubbleDisplayKind.landReply
+                                    ? FontStyle.italic
+                                    : FontStyle.normal,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Positioned.fill(
+                              child: ClipRect(
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(
+                                    sigmaX: 3.0,
+                                    sigmaY: 3.0,
+                                  ),
+                                  child: Container(color: Colors.transparent),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ],
             ),
           ),
         ),
