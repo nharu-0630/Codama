@@ -2,7 +2,6 @@ from typing import Any, cast
 from uuid import UUID
 
 import geohash  # type: ignore
-
 from config.database import supabase
 from schemas.db import DBLLMPost, DBUserPost
 
@@ -53,6 +52,17 @@ def get_user_posts_by_location(geo_hash: str) -> list[DBUserPost]:
 
     posts = query.execute()
 
+    # 取得したデータをDBUserPostモデルのリストに変換
+    data = cast(list[dict[str, Any]], posts.data)
+    return [DBUserPost(**item) for item in data]
+
+
+def get_user_posts_by_user_uuid(user_uuid: str) -> list[DBUserPost]:
+    """ユーザーUUIDでそのユーザーの投稿一覧を取得"""
+    # ユーザーUUIDで検索
+    posts = (
+        supabase.from_("user_posts").select("*").eq("user_uuid", user_uuid).execute()
+    )
     # 取得したデータをDBUserPostモデルのリストに変換
     data = cast(list[dict[str, Any]], posts.data)
     return [DBUserPost(**item) for item in data]
