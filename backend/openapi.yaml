@@ -304,12 +304,6 @@ paths:
         schema:
           title: Lon
           type: number
-      - in: header
-        name: authorization
-        required: true
-        schema:
-          title: Authorization
-          type: string
       responses:
         '200':
           content:

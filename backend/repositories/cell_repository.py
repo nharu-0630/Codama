@@ -1,9 +1,10 @@
 from typing import Any, cast
 
 from config.database import supabase
-from repositories.area_repository import create_area, get_area_by_name
 from schemas.db import DBCell
 from utils.geo_hash import decode_geo_hash, encode_geo_hash, get_area_name_from_geocode
+
+from repositories.area_repository import create_area, get_area_by_name
 
 
 def get_cell_by_id(cell_id: int) -> DBCell | None:

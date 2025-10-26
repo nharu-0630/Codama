@@ -1,17 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
-
+from fastapi import APIRouter, HTTPException
 from repositories.area_repository import get_area_by_id
 from repositories.cell_repository import get_or_create_cell
 from schemas.api import APIArea, APICell, CurrentResponse
-from utils.auth import get_current_user
 from utils.geo_hash import decode_wkt_location
 
 router = APIRouter(prefix="/current", tags=["current"])
 
 
-@router.get(
-    "", response_model=CurrentResponse, dependencies=[Depends(get_current_user)]
-)
+@router.get("", response_model=CurrentResponse)
 async def get_current(lat: float, lon: float):
     """現在位置のエリアとセル情報を取得"""
     # 座標からセルを取得または作成

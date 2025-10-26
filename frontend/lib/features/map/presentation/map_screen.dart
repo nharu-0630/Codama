@@ -50,6 +50,10 @@ class _MapScreenState extends State<MapScreen> {
   List<Post> _posts = [];
   List<BubblePosition> _bubblePositions = [];
 
+  // 150m radius circle
+  static const double _circleRadiusMeters = 150.0;
+  LatLng? _mapCenter;
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +76,9 @@ class _MapScreenState extends State<MapScreen> {
         (position.zoom - _lastZoomLevel!).abs() >= 1.0) {
       _lastZoomLevel = position.zoom;
     }
+    setState(() {
+      _mapCenter = position.center;
+    });
     _updateBubblePositions();
   }
 
@@ -135,6 +142,13 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  bool _isInsideCircle(LatLng position) {
+    if (_mapCenter == null) return true;
+    const distance = Distance();
+    final distanceMeters = distance.as(LengthUnit.Meter, _mapCenter!, position);
+    return distanceMeters <= _circleRadiusMeters;
+  }
+
   void _updateBubblePositions() {
     if (_posts.isEmpty) {
       return;
@@ -155,7 +169,10 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         _bubblePositions = bubblePositions;
       });
-    } catch (e) {}
+    } catch (e) {
+      // エラーが発生した場合はバブル位置の更新をスキップ
+      print('Error updating bubble positions: $e');
+    }
   }
 
   void _showPostDetail(Post post) {
@@ -245,7 +262,6 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         _currentLocation = _virtualLocation;
       });
-      _locationService.logDevToolsState();
     }
   }
 
@@ -296,6 +312,19 @@ class _MapScreenState extends State<MapScreen> {
                 additionalOptions: {"api_key": apiKey},
                 maxZoom: 20,
               ),
+              if (_mapCenter != null)
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: _mapCenter!,
+                      radius: _circleRadiusMeters,
+                      useRadiusInMeter: true,
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderColor: Colors.orange,
+                      borderStrokeWidth: 2,
+                    ),
+                  ],
+                ),
               if (_currentLocation != null)
                 MarkerLayer(
                   rotate: true,
@@ -324,6 +353,7 @@ class _MapScreenState extends State<MapScreen> {
                 MarkerLayer(
                   rotate: true,
                   markers: _bubblePositions.reversed.map((bubblePosition) {
+                    final isInside = _isInsideCircle(bubblePosition.position);
                     return Marker(
                       point: bubblePosition.position,
                       width: 200,
@@ -333,6 +363,7 @@ class _MapScreenState extends State<MapScreen> {
                         post: bubblePosition.post,
                         displayKind: bubblePosition.displayKind,
                         onTap: () => _showPostDetail(bubblePosition.post),
+                        showContent: isInside,
                       ),
                     );
                   }).toList(),

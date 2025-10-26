@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
-import '../../../core/constants/location_config.dart';
 import '../../../features/auth/services/auth_service.dart';
 
 class LocationData {
@@ -62,41 +61,29 @@ class LocationApiService {
   final AuthService _authService = AuthService();
 
   Future<LocationData?> getCurrentLocation(double lat, double lon) async {
+    return await _authService.withAuth(() => _getCurrentLocationApi(lat, lon));
+  }
+
+  Future<LocationData?> _getCurrentLocationApi(double lat, double lon) async {
     final uri = Uri.parse('$_baseUrl/current?lat=$lat&lon=$lon');
-
-    LocationConfig.log('LocationApiService', '🌐 API呼び出し: GET $uri');
-
     try {
       final response = await http.get(
         uri,
         headers: _authService.getAuthHeaders(),
       );
-
-      LocationConfig.log(
-        'LocationApiService',
-        '📡 API応答: ステータス ${response.statusCode}',
-      );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final locationData = LocationData.fromJson(data);
-
-        LocationConfig.log(
-          'LocationApiService',
-          '✅ セル情報取得成功: ${locationData.cell.geoHash} (area: ${locationData.area.name})',
-        );
-
         return locationData;
+      } else if (response.statusCode == 401) {
+        throw UnauthorizedException('認証が必要です');
       }
-
-      LocationConfig.log(
-        'LocationApiService',
-        '⚠️ セル情報取得失敗: ステータス ${response.statusCode}',
-      );
 
       return null;
     } catch (e) {
-      LocationConfig.log('LocationApiService', '❌ セル情報取得エラー: $e');
+      if (e is UnauthorizedException) {
+        rethrow;
+      }
       return null;
     }
   }

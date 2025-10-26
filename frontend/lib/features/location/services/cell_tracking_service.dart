@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:latlong2/latlong.dart';
 
-import '../../../core/constants/location_config.dart';
 import '../../auth/services/auth_service.dart';
 import '../../post/models/create_post_response.dart';
 import '../../post/models/post.dart';
@@ -238,12 +237,6 @@ class CellTrackingService {
     });
 
     final sortedPosts = postsWithPriority.map((p) => p.post).toList();
-
-    LocationConfig.log(
-      'CellTrackingService',
-      '📋 投稿展開: 本体1件 + 返信${response.post.replies.length}件 + 類似${response.similarPosts.length}件 = ${sortedPosts.length}件（優先度順）',
-    );
-
     return sortedPosts;
   }
 

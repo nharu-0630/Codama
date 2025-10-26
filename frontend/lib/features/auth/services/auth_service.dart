@@ -166,13 +166,14 @@ class AuthService {
     }
   }
 
-  /// 認証が必要な処理を実行（自動リフレッシュ付き）
+  /// 認証が必要な処理を実行（自動リフレッシュ・自動サインアップ付き）
   Future<T> withAuth<T>(Future<T> Function() action) async {
     try {
       return await action();
     } catch (e) {
       // 認証エラーの場合、リフレッシュを試行
-      if (e.toString().contains('authorization') ||
+      if (e is UnauthorizedException ||
+          e.toString().contains('authorization') ||
           e.toString().contains('401')) {
         print('Authentication error detected, attempting refresh...');
         final refreshSuccess = await refreshToken();
@@ -181,8 +182,17 @@ class AuthService {
           print('Token refreshed, retrying action...');
           return await action();
         } else {
-          print('Token refresh failed, authentication required');
-          throw AuthenticationRequiredException('認証が必要です');
+          // リフレッシュに失敗した場合、自動的にサインアップを試行
+          print('Token refresh failed, attempting automatic signup...');
+          final signupSuccess = await signup();
+
+          if (signupSuccess) {
+            print('Automatic signup successful, retrying action...');
+            return await action();
+          } else {
+            print('Automatic signup failed, authentication required');
+            throw AuthenticationRequiredException('認証に失敗しました');
+          }
         }
       }
       rethrow;
@@ -197,4 +207,15 @@ class AuthenticationRequiredException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// 401 Unauthorized エラー用の例外
+class UnauthorizedException implements Exception {
+  final String message;
+  final int statusCode;
+
+  UnauthorizedException(this.message, {this.statusCode = 401});
+
+  @override
+  String toString() => 'UnauthorizedException: $message (status: $statusCode)';
 }
