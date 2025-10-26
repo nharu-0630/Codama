@@ -20,6 +20,7 @@ class DBCell(BaseModel):
     location: str
     area_id: int
     created_at: datetime
+    areas: "DBArea | None" = None
 
 
 class DBUserPost(BaseModel):
@@ -32,6 +33,7 @@ class DBUserPost(BaseModel):
     cell_id: int
     location: str
     created_at: datetime
+    cells: "DBCell | None" = None
 
 
 class DBLLMPost(BaseModel):
@@ -43,6 +45,14 @@ class DBLLMPost(BaseModel):
     user_post_uuid: UUID
     location: str
     created_at: datetime
+    user_posts: "DBUserPostForLLMReply | None" = None
+
+
+class DBUserPostForLLMReply(BaseModel):
+    """LLM返信用のuser_postsテーブルのデータベースモデル（cell情報のみ）"""
+
+    cell_id: int
+    cells: "DBCell | None" = None
 
 
 class DBPrompt(BaseModel):
@@ -71,3 +81,10 @@ class DBFriend(BaseModel):
     friend_uuid: UUID
     cell_id: int
     created_at: datetime
+
+
+# Forward referencesを解決
+DBCell.model_rebuild()
+DBUserPost.model_rebuild()
+DBLLMPost.model_rebuild()
+DBUserPostForLLMReply.model_rebuild()

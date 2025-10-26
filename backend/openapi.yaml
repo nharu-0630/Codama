@@ -40,6 +40,14 @@ components:
     APIPost-Input:
       description: 投稿情報のAPIモデル（ユーザー投稿・LLM返信）
       properties:
+        area:
+          anyOf:
+          - $ref: '#/components/schemas/APIArea'
+          - type: 'null'
+        cell:
+          anyOf:
+          - $ref: '#/components/schemas/APICell'
+          - type: 'null'
         content:
           title: Content
           type: string
@@ -75,6 +83,14 @@ components:
     APIPost-Output:
       description: 投稿情報のAPIモデル（ユーザー投稿・LLM返信）
       properties:
+        area:
+          anyOf:
+          - $ref: '#/components/schemas/APIArea'
+          - type: 'null'
+        cell:
+          anyOf:
+          - $ref: '#/components/schemas/APICell'
+          - type: 'null'
         content:
           title: Content
           type: string

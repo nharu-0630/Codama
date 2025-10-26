@@ -2,16 +2,19 @@ from typing import Any, cast
 from uuid import UUID
 
 import geohash  # type: ignore
+
 from config.database import supabase
 from schemas.db import DBLLMPost, DBUserPost
 
 
 def get_user_post_by_uuid(post_uuid: str) -> DBUserPost | None:
     """UUIDでユーザー投稿を取得"""
-    # UUIDで投稿を検索
+    # UUIDで投稿を検索（cellsとareasをjoin）
     post_response = (
         supabase.from_("user_posts")
-        .select("*")
+        .select(
+            "*, cells!inner(id, geo_hash, location, area_id, created_at, areas(id, name, created_at))"
+        )
         .eq("uuid", post_uuid)
         .single()
         .execute()
@@ -23,31 +26,21 @@ def get_user_post_by_uuid(post_uuid: str) -> DBUserPost | None:
     return DBUserPost(**data)
 
 
-def get_llm_posts_by_user_post_uuid(user_post_uuid: str) -> list[DBLLMPost]:
-    """ユーザー投稿のUUIDに紐づくLLM返信の一覧を取得"""
-    # ユーザー投稿UUIDで検索
-    response = (
-        supabase.from_("llm_posts")
-        .select("*")
-        .eq("user_post_uuid", user_post_uuid)
-        .execute()
-    )
-    # 取得したデータをDBLLMPostモデルのリストに変換
-    data = cast(list[dict[str, Any]], response.data)
-    return [DBLLMPost(**item) for item in data]
-
-
-def get_user_posts_by_location(geo_hash: str) -> list[DBUserPost]:
+def get_user_posts_by_location(geo_hash: str, length: int) -> list[DBUserPost]:
     """ジオハッシュで指定した位置とその隣接8セル（合計9セル）の投稿一覧を取得"""
     # 中心のgeohashと隣接8セルのgeohashを取得
     neighbor_hashes = geohash.neighbors(geo_hash)  # type: ignore
     geo_hashes = [geo_hash] + neighbor_hashes  # type: ignore
 
-    # 9つのgeohashの投稿を検索
+    # 9つのgeohashの投稿を検索（cellsとareasをjoin）
     query = (
         supabase.from_("user_posts")
-        .select("*, cells!inner(id, geo_hash)")
+        .select(
+            "*, cells!inner(id, geo_hash, location, area_id, created_at, areas(id, name, created_at))"
+        )
         .in_("cells.geo_hash", geo_hashes)  # type: ignore
+        .order("created_at", desc=True)
+        .limit(length)
     )
 
     posts = query.execute()
@@ -59,9 +52,14 @@ def get_user_posts_by_location(geo_hash: str) -> list[DBUserPost]:
 
 def get_user_posts_by_user_uuid(user_uuid: str) -> list[DBUserPost]:
     """ユーザーUUIDでそのユーザーの投稿一覧を取得"""
-    # ユーザーUUIDで検索
+    # ユーザーUUIDで検索（cellsとareasをjoin）
     posts = (
-        supabase.from_("user_posts").select("*").eq("user_uuid", user_uuid).execute()
+        supabase.from_("user_posts")
+        .select(
+            "*, cells!inner(id, geo_hash, location, area_id, created_at, areas(id, name, created_at))"
+        )
+        .eq("user_uuid", user_uuid)
+        .execute()
     )
     # 取得したデータをDBUserPostモデルのリストに変換
     data = cast(list[dict[str, Any]], posts.data)
@@ -72,8 +70,15 @@ def get_user_posts_by_uuids(post_uuids: list[str]) -> list[DBUserPost]:
     """UUIDのリストで複数のユーザー投稿を取得"""
     if not post_uuids:
         return []
-    # UUIDのリストで検索
-    posts = supabase.from_("user_posts").select("*").in_("uuid", post_uuids).execute()
+    # UUIDのリストで検索（cellsとareasをjoin）
+    posts = (
+        supabase.from_("user_posts")
+        .select(
+            "*, cells!inner(id, geo_hash, location, area_id, created_at, areas(id, name, created_at))"
+        )
+        .in_("uuid", post_uuids)
+        .execute()
+    )
     # 取得したデータをDBUserPostモデルのリストに変換
     data = cast(list[dict[str, Any]], posts.data)
     return [DBUserPost(**item) for item in data]
@@ -104,10 +109,12 @@ def get_user_posts_by_cell_ids_after_date(
     if not cell_ids:
         return []
 
-    # セルIDと作成日時でフィルタリング
+    # セルIDと作成日時でフィルタリング（cellsとareasをjoin）
     posts = (
         supabase.from_("user_posts")
-        .select("*")
+        .select(
+            "*, cells!inner(id, geo_hash, location, area_id, created_at, areas(id, name, created_at))"
+        )
         .in_("cell_id", cell_ids)
         .filter("created_at", "gt", after_date)
         .execute()
@@ -125,10 +132,12 @@ def get_recent_user_posts_by_cell_ids(
     if not cell_ids:
         return []
 
-    # セルIDでフィルタして作成日時の降順で取得
+    # セルIDでフィルタして作成日時の降順で取得（cellsとareasをjoin）
     posts = (
         supabase.from_("user_posts")
-        .select("*")
+        .select(
+            "*, cells!inner(id, geo_hash, location, area_id, created_at, areas(id, name, created_at))"
+        )
         .in_("cell_id", cell_ids)
         .order("created_at", desc=True)
         .limit(limit)
@@ -153,3 +162,45 @@ def create_llm_post(content: str, user_post_uuid: UUID, location_wkt: str) -> DB
     # 作成された返信をDBLLMPostモデルに変換して返却
     data = cast(list[dict[str, Any]], response.data)
     return DBLLMPost(**data[0])
+
+
+def get_user_posts_with_replies(
+    user_posts: list[DBUserPost],
+) -> list[tuple[DBUserPost, list[DBLLMPost]]]:
+    """ユーザー投稿のリストとそれぞれのLLM返信をまとめて取得"""
+    if not user_posts:
+        return []
+
+    # すべてのuser_post_uuidを収集
+    post_uuids = [str(post.uuid) for post in user_posts]
+
+    # 一括でLLM返信を取得（user_posts、cells、areasをjoin）
+    response = (
+        supabase.from_("llm_posts")
+        .select(
+            "*, user_posts!inner(cell_id, cells(id, geo_hash, location, area_id, created_at, areas(id, name, created_at)))"
+        )
+        .in_("user_post_uuid", post_uuids)
+        .execute()
+    )
+
+    # LLM返信をuser_post_uuid別にグループ化
+    data = cast(list[dict[str, Any]], response.data)
+    llm_posts_by_user_post: dict[str, list[DBLLMPost]] = {}
+
+    for item in data:
+        llm_post = DBLLMPost(**item)
+        user_post_uuid = str(llm_post.user_post_uuid)
+
+        if user_post_uuid not in llm_posts_by_user_post:
+            llm_posts_by_user_post[user_post_uuid] = []
+        llm_posts_by_user_post[user_post_uuid].append(llm_post)
+
+    # 各ユーザー投稿とそのLLM返信をタプルにして返す
+    results: list[tuple[DBUserPost, list[DBLLMPost]]] = []
+    for user_post in user_posts:
+        user_post_uuid = str(user_post.uuid)
+        replies = llm_posts_by_user_post.get(user_post_uuid, [])
+        results.append((user_post, replies))
+
+    return results
