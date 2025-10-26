@@ -11,6 +11,8 @@ class Settings:
 
     # ジオハッシュの精度（デフォルト: 7）
     GEO_HASH_PRECISION: int = int(os.environ.get("GEO_HASH_PRECISION", 7))
+    # 投稿の取得件数（デフォルト: 100）
+    POSTS_FETCH_LIMIT: int = int(os.environ.get("POSTS_FETCH_LIMIT", 100))
     # 座標にランダムオフセットを追加する際の最大距離（メートル）
     GEO_DELTA_METERS: int = int(os.environ.get("GEO_DELTA_METERS", 100))
     # AI返信の生成数
