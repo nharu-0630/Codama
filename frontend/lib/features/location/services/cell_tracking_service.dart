@@ -7,39 +7,32 @@ import '../../post/models/create_post_response.dart';
 import '../../post/models/post.dart';
 import '../../post/services/post_service.dart';
 import 'location_api_service.dart';
-
-/// 一時投稿（5秒で消える投稿）を保持するクラス
-class TemporaryPost {
-  final Post post;
-  final DateTime displayStartTime;
-
-  TemporaryPost({required this.post, required this.displayStartTime});
-}
+import 'post_display_manager.dart';
+import 'temporary_post_manager.dart';
 
 class CellTrackingService {
   final LocationApiService _locationApiService = LocationApiService();
   final AuthService _authService = AuthService();
-  final PostService _postService = PostService();
+  final PostService _postService;
+  final PostDisplayManager _displayManager = PostDisplayManager();
+  final TemporaryPostManager _temporaryManager = TemporaryPostManager();
+
+  CellTrackingService({required AuthService authService})
+    : _postService = PostService(authService: authService);
 
   Cell? _currentCell;
   String? _currentAreaName;
   StreamController<List<Post>>? _postsController;
   StreamController<String?>? _areaNameController;
-  List<Post> _displayedPosts = []; // 画面に表示されている投稿
-  List<Post> _pendingPosts = []; // 表示待ちキュー
-  List<TemporaryPost> _temporaryPosts = []; // 一時投稿（5秒で消える）
-  Timer? _displayTimer;
-  Timer? _cleanupTimer;
 
   Stream<List<Post>>? get postsStream => _postsController?.stream;
   Stream<String?>? get areaNameStream => _areaNameController?.stream;
   String? get currentAreaName => _currentAreaName;
 
-  static const Duration displayInterval = Duration(milliseconds: 500); // 表示間隔
-  static const Duration temporaryPostLifetime = Duration(
-    seconds: 5,
-  ); // 一時投稿の有効期限
-  static const Duration cleanupInterval = Duration(seconds: 1); // クリーンアップ間隔
+  // 投稿表示の優先度定数
+  static const int _priorityCreatedPostReplies = 1; // 作成投稿の返信（最優先）
+  static const int _prioritySimilarPosts = 2; // 類似投稿
+  static const int _prioritySimilarPostReplies = 3; // 類似投稿の返信
 
   Future<void> initialize() async {
     await _authService.loadStoredTokens();
@@ -52,50 +45,14 @@ class CellTrackingService {
 
     _postsController = StreamController<List<Post>>.broadcast();
     _areaNameController = StreamController<String?>.broadcast();
-    _startDisplayTimer();
-    _startCleanupTimer();
-  }
-
-  void _startDisplayTimer() {
-    _displayTimer?.cancel();
-    _displayTimer = Timer.periodic(displayInterval, (_) {
-      _displayNextPost();
-    });
-  }
-
-  void _startCleanupTimer() {
-    _cleanupTimer?.cancel();
-    _cleanupTimer = Timer.periodic(cleanupInterval, (_) {
-      _cleanupExpiredTemporaryPosts();
-    });
-  }
-
-  void _cleanupExpiredTemporaryPosts() {
-    final now = DateTime.now();
-    final beforeCount = _temporaryPosts.length;
-    _temporaryPosts.removeWhere((tempPost) {
-      final elapsed = now.difference(tempPost.displayStartTime);
-      return elapsed >= temporaryPostLifetime;
-    });
-    final removedCount = beforeCount - _temporaryPosts.length;
-    if (removedCount > 0) {
-      _broadcastAllPosts();
-    }
-  }
-
-  void _displayNextPost() {
-    if (_pendingPosts.isEmpty) {
-      return;
-    }
-    final post = _pendingPosts.removeAt(0);
-    _displayedPosts.add(post);
-    _broadcastAllPosts();
+    _displayManager.start(_broadcastAllPosts);
+    _temporaryManager.start(_broadcastAllPosts);
   }
 
   void _broadcastAllPosts() {
     final allPosts = [
-      ..._displayedPosts,
-      ..._temporaryPosts.map((temp) => temp.post),
+      ..._displayManager.getDisplayedPosts(),
+      ..._temporaryManager.getTemporaryPosts(),
     ];
     _postsController?.add(allPosts);
   }
@@ -124,31 +81,17 @@ class CellTrackingService {
         );
         _addPostsToQueue(posts);
       }
-    } catch (e) {}
+    } catch (e) {
+      // 位置情報の取得に失敗した場合は何もしない
+    }
   }
 
   void _addPostsToQueue(List<Post> newPosts) {
-    final existingIds = {
-      ..._displayedPosts.map((p) => p.id),
-      ..._pendingPosts.map((p) => p.id),
-    };
-    final uniquePosts = newPosts
-        .where((p) => !existingIds.contains(p.id))
-        .toList();
-    if (uniquePosts.isEmpty) {
-      return;
-    }
-    _pendingPosts.addAll(uniquePosts);
+    _displayManager.addPostsToQueue(newPosts);
   }
 
   void _addTemporaryPosts(List<Post> newPosts) {
-    final existingIds = _temporaryPosts.map((temp) => temp.post.id).toSet();
-    final now = DateTime.now();
-    for (final post in newPosts) {
-      if (!existingIds.contains(post.id)) {
-        _temporaryPosts.add(TemporaryPost(post: post, displayStartTime: now));
-      }
-    }
+    _temporaryManager.addTemporaryPosts(newPosts, _broadcastAllPosts);
   }
 
   Future<void> createPost({required LatLng loc, required String text}) async {
@@ -162,93 +105,96 @@ class CellTrackingService {
       userId: _authService.userId,
       isTemporary: false,
     );
-    _pendingPosts.add(optimisticPost);
+    _displayManager.addPostsToQueue([optimisticPost]);
     try {
       final response = await _postService.createPost(
         lat: loc.latitude,
         lng: loc.longitude,
         text: text,
       );
-      _displayedPosts.removeWhere((p) => p.id == optimisticPost.id);
-      _pendingPosts.removeWhere((p) => p.id == optimisticPost.id);
-
       final responsePosts = _flattenResponsePosts(response);
       _addTemporaryPosts(responsePosts);
       _addPostsToQueue([response.post]);
     } catch (e) {
-      _displayedPosts.removeWhere((p) => p.id == optimisticPost.id);
-      _pendingPosts.removeWhere((p) => p.id == optimisticPost.id);
+      // 投稿作成に失敗した場合は何もしない
     } finally {
+      _displayManager.removePostById(optimisticPost.id);
       _broadcastAllPosts();
     }
   }
 
   /// レスポンスから投稿を優先度順に展開
-  /// 優先度: 1.作成投稿 2.その返信(古い順) 3.類似投稿(古い順) 4.類似投稿の返信(古い順)
+  /// 優先度: 1.作成投稿の返信 2.類似投稿 3.類似投稿の返信（各優先度内では古い順）
   List<Post> _flattenResponsePosts(CreatePostResponse response) {
     final postsWithPriority = <_PostWithPriority>[];
 
-    // 1. 作成された投稿（優先度0、最優先）
-    // 自分の投稿なので、userIdが含まれていない場合は設定する
-    // 一時投稿として5秒で消えるようにする
-    final createdPost = response.post.copyWith(
-      userId: response.post.userId ?? _authService.userId,
-      isTemporary: true,
+    // 作成された投稿（一時投稿として5秒で消える）
+    final createdPost = _makeTemporaryPost(
+      response.post,
+      userId: _authService.userId,
     );
 
-    // 2. 作成された投稿への返信（優先度1、古い順）
-    for (final reply in createdPost.replies) {
-      postsWithPriority.add(
-        _PostWithPriority(
-          post: reply.copyWith(kind: PostKind.land, isTemporary: true),
-          priority: 3,
-          sortKey: reply.createdAt,
-        ),
-      );
-    }
+    // 1. 作成された投稿への返信を追加
+    _addRepliesToList(
+      postsWithPriority,
+      createdPost.replies,
+      _priorityCreatedPostReplies,
+    );
 
-    // 3. 類似投稿（優先度2、古い順）
+    // 2. 類似投稿とその返信を追加
     for (final similarPost in response.similarPosts) {
       postsWithPriority.add(
         _PostWithPriority(
-          post: similarPost.copyWith(isTemporary: true),
-          priority: 2,
+          post: _makeTemporaryPost(similarPost),
+          priority: _prioritySimilarPosts,
           sortKey: similarPost.createdAt,
         ),
       );
 
-      // 4. 類似投稿への返信（優先度3、古い順）
-      for (final reply in similarPost.replies) {
-        postsWithPriority.add(
-          _PostWithPriority(
-            post: reply.copyWith(kind: PostKind.land, isTemporary: true),
-            priority: 1,
-            sortKey: reply.createdAt,
-          ),
-        );
-      }
+      _addRepliesToList(
+        postsWithPriority,
+        similarPost.replies,
+        _prioritySimilarPostReplies,
+      );
     }
 
-    // 優先度が低い順（数値が大きい順）、同一優先度内では新しい順にソート
-    postsWithPriority.sort((a, b) {
-      final priorityCompare = b.priority.compareTo(a.priority);
-      if (priorityCompare != 0) return priorityCompare;
-      return b.sortKey.compareTo(a.sortKey);
-    });
+    return _sortByPriority(postsWithPriority);
+  }
 
-    final sortedPosts = postsWithPriority.map((p) => p.post).toList();
-    return sortedPosts;
+  Post _makeTemporaryPost(Post post, {String? userId}) {
+    return post.copyWith(userId: userId ?? post.userId, isTemporary: true);
+  }
+
+  void _addRepliesToList(
+    List<_PostWithPriority> list,
+    List<Post> replies,
+    int priority,
+  ) {
+    for (final reply in replies) {
+      list.add(
+        _PostWithPriority(
+          post: reply.copyWith(kind: PostKind.land, isTemporary: true),
+          priority: priority,
+          sortKey: reply.createdAt,
+        ),
+      );
+    }
+  }
+
+  List<Post> _sortByPriority(List<_PostWithPriority> postsWithPriority) {
+    postsWithPriority.sort((a, b) {
+      final priorityCompare = a.priority.compareTo(b.priority);
+      if (priorityCompare != 0) return priorityCompare;
+      return a.sortKey.compareTo(b.sortKey);
+    });
+    return postsWithPriority.map((p) => p.post).toList();
   }
 
   void dispose() {
-    _displayTimer?.cancel();
-    _displayTimer = null;
-    _cleanupTimer?.cancel();
-    _cleanupTimer = null;
+    _displayManager.dispose();
+    _temporaryManager.dispose();
     _postsController?.close();
-    _postsController = null;
     _areaNameController?.close();
-    _areaNameController = null;
   }
 }
 

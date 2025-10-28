@@ -1,9 +1,10 @@
 import openai
 
-from repositories.area_repository import get_area_by_id
-from repositories.cell_repository import get_cells_by_area_id
-from repositories.post_repository import get_recent_user_posts_by_cell_ids
-from repositories.prompt_repository import get_prompts_by_area_id
+from application.container import container
+from interfaces.area_repository import AreaRepositoryInterface
+from interfaces.cell_repository import CellRepositoryInterface
+from interfaces.post_repository import PostRepositoryInterface
+from interfaces.prompt_repository import PromptRepositoryInterface
 
 POST_TEMPLATE = """
 # 指示
@@ -52,13 +53,19 @@ POST_TEMPLATE = """
 
 async def generate_post(content: str, area_id: int) -> str | None:
     """ユーザーの投稿内容とエリア情報に基づいてLLMから返信を生成"""
+    # 依存性注入コンテナからリポジトリを取得
+    area_repo: AreaRepositoryInterface = container.resolve(AreaRepositoryInterface)
+    cell_repo: CellRepositoryInterface = container.resolve(CellRepositoryInterface)
+    post_repo: PostRepositoryInterface = container.resolve(PostRepositoryInterface)
+    prompt_repo: PromptRepositoryInterface = container.resolve(PromptRepositoryInterface)
+    
     # エリア情報を取得
-    db_area = get_area_by_id(area_id)
+    db_area = area_repo.get_area_by_id(area_id)
     if not db_area:
         return None
 
     # 指定されたエリアの最新のプロンプト要約を取得
-    db_prompts = get_prompts_by_area_id(area_id)
+    db_prompts = prompt_repo.get_prompts_by_area_id(area_id)
     summary_text: str | None = None
 
     if db_prompts:
@@ -67,14 +74,14 @@ async def generate_post(content: str, area_id: int) -> str | None:
         summary_text = sorted_prompts[0].prompt
 
     # エリアIDに紐づくセルIDのリストを取得
-    db_cells = get_cells_by_area_id(area_id)
+    db_cells = cell_repo.get_cells_by_area_id(area_id)
     cell_ids = [cell.id for cell in db_cells]
 
     # 参照用の最近の投稿を取得
     shots_text: str | None = None
     if cell_ids:
         # セルIDでフィルタして最近の投稿を5件取得
-        db_posts = get_recent_user_posts_by_cell_ids(cell_ids, limit=5)
+        db_posts = post_repo.get_recent_user_posts_by_cell_ids(cell_ids, limit=5)
         if db_posts:
             shots_text = "\n".join([f"- {post.content}" for post in db_posts])
 

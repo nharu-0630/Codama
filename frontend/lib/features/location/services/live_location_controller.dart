@@ -28,27 +28,45 @@ class LiveLocationController with WidgetsBindingObserver {
     required void Function(LatLng location) onLocationUpdate,
     void Function(Object error)? onError,
   }) async {
-    if (_isTracking) {
-      return;
-    }
+    if (_isTracking) return;
 
     _onLocationUpdate = onLocationUpdate;
     _onError = onError;
 
+    // 開発ツールの仮想位置をチェック
+    if (await _startVirtualTrackingIfEnabled()) return;
+
+    // 位置サービスと権限をチェック
+    if (!await _checkLocationPermissions()) return;
+
+    // 最後の既知の位置情報を取得
+    await _sendLastKnownPosition();
+
+    // 位置情報ストリームを開始
+    _startRealLocationStream();
+
+    _isTracking = true;
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  Future<bool> _startVirtualTrackingIfEnabled() async {
     if (DevLocationService.isDevToolsEnabled) {
       final virtualLocation = _devLocationService.getVirtualLocation();
       if (virtualLocation != null) {
         _startVirtualLocationStream();
         _isTracking = true;
         WidgetsBinding.instance.addObserver(this);
-        return;
+        return true;
       }
     }
+    return false;
+  }
 
+  Future<bool> _checkLocationPermissions() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       _onError?.call('位置サービスが無効です。設定から有効にしてください。');
-      return;
+      return false;
     }
 
     LocationPermission permission = await Geolocator.checkPermission();
@@ -59,9 +77,13 @@ class LiveLocationController with WidgetsBindingObserver {
     if (permission == LocationPermission.deniedForever ||
         permission == LocationPermission.denied) {
       _onError?.call('位置情報の権限が必要です。設定から権限を許可してください。');
-      return;
+      return false;
     }
 
+    return true;
+  }
+
+  Future<void> _sendLastKnownPosition() async {
     try {
       final lastKnownPosition = await Geolocator.getLastKnownPosition();
       if (lastKnownPosition != null) {
@@ -71,31 +93,30 @@ class LiveLocationController with WidgetsBindingObserver {
         );
         _onLocationUpdate?.call(lastLocation);
       }
-    } catch (e) {}
+    } catch (e) {
+      // 最後の既知の位置情報の取得に失敗した場合は無視して続行
+    }
+  }
 
+  void _startRealLocationStream() {
     _positionSubscription?.cancel();
-    _positionSubscription =
-        Geolocator.getPositionStream(
-              locationSettings: LocationConfig.locationSettings,
-            )
-            .distinct(
-              (previous, current) =>
-                  previous.latitude == current.latitude &&
-                  previous.longitude == current.longitude,
-            )
-            .listen(
-              (Position position) {
-                final location = LatLng(position.latitude, position.longitude);
-                _onLocationUpdate?.call(location);
-              },
-              onError: (error, stackTrace) {
-                _onError?.call(error);
-              },
-            );
-
-    _isTracking = true;
-
-    WidgetsBinding.instance.addObserver(this);
+    _positionSubscription = Geolocator.getPositionStream(
+      locationSettings: LocationConfig.locationSettings,
+    )
+        .distinct(
+          (previous, current) =>
+              previous.latitude == current.latitude &&
+              previous.longitude == current.longitude,
+        )
+        .listen(
+          (Position position) {
+            final location = LatLng(position.latitude, position.longitude);
+            _onLocationUpdate?.call(location);
+          },
+          onError: (error, stackTrace) {
+            _onError?.call(error);
+          },
+        );
   }
 
   void _startVirtualLocationStream() {
@@ -125,11 +146,7 @@ class LiveLocationController with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     await _positionSubscription?.cancel();
     await _virtualPositionSubscription?.cancel();
-    _positionSubscription = null;
-    _virtualPositionSubscription = null;
     _isTracking = false;
-    _onLocationUpdate = null;
-    _onError = null;
   }
 
   /// アプリのライフサイクル変更時の処理
@@ -137,28 +154,29 @@ class LiveLocationController with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
         // バックグラウンドに移行時は一時停止してバッテリーを節約
-        _positionSubscription?.pause();
-        _virtualPositionSubscription?.pause();
-        break;
+        _pauseLocationTracking();
       case AppLifecycleState.resumed:
         // フォアグラウンドに復帰時は再開
-        _positionSubscription?.resume();
-        _virtualPositionSubscription?.resume();
-        break;
+        _resumeLocationTracking();
       case AppLifecycleState.detached:
         // アプリ終了時は完全に停止
         stopTracking();
-        break;
       case AppLifecycleState.inactive:
         // アクティブでない状態（通話中など）は継続
         break;
-      case AppLifecycleState.hidden:
-        // 隠れた状態では一時停止
-        _positionSubscription?.pause();
-        _virtualPositionSubscription?.pause();
-        break;
     }
+  }
+
+  void _pauseLocationTracking() {
+    _positionSubscription?.pause();
+    _virtualPositionSubscription?.pause();
+  }
+
+  void _resumeLocationTracking() {
+    _positionSubscription?.resume();
+    _virtualPositionSubscription?.resume();
   }
 
   /// 現在の追跡状態を確認

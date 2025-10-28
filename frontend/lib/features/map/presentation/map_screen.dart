@@ -2,13 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:icon_decoration/icon_decoration.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/constants/location_config.dart';
+import '../../../core/providers/app_providers.dart';
 import '../../auth/services/auth_service.dart';
 import '../../auth/widgets/signup_modal.dart';
-import '../../location/services/cell_tracking_service.dart';
 import '../../location/services/live_location_controller.dart';
 import '../../location/services/location_service.dart';
 import '../../post/models/bubble_position.dart';
@@ -22,23 +23,18 @@ import '../widgets/dev_tools/dev_location_service.dart';
 const _styleUrl =
     "https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg";
 
-// スタイリング無し版
-// const _styleUrl =
-//     "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
-
-class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   late MapController _mapController;
   final LocationService _locationService = LocationService();
   final LiveLocationController _liveLocationController =
       LiveLocationController();
-  final CellTrackingService _cellTrackingService = CellTrackingService();
   final AuthService _authService = AuthService();
   LatLng? _currentLocation;
   String? _currentAreaName;
@@ -50,7 +46,6 @@ class _MapScreenState extends State<MapScreen> {
   List<Post> _posts = [];
   List<BubblePosition> _bubblePositions = [];
 
-  // 150m radius circle
   static const double _circleRadiusMeters = 150.0;
 
   @override
@@ -66,7 +61,6 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void dispose() {
     _liveLocationController.dispose();
-    _cellTrackingService.dispose();
     super.dispose();
   }
 
@@ -92,15 +86,16 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _initializeCellTracking() async {
+    final cellTrackingService = ref.read(cellTrackingServiceProvider);
     try {
-      await _cellTrackingService.initialize();
-      _cellTrackingService.postsStream?.listen((posts) {
+      await cellTrackingService.initialize();
+      cellTrackingService.postsStream?.listen((posts) {
         setState(() {
           _posts = posts;
         });
         _updateBubblePositions();
       });
-      _cellTrackingService.areaNameStream?.listen((areaName) {
+      cellTrackingService.areaNameStream?.listen((areaName) {
         setState(() {
           _currentAreaName = areaName;
         });
@@ -134,7 +129,8 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _createPost(String text) async {
     final loc = _shouldShowDevTools ? _virtualLocation : _currentLocation;
     if (loc != null) {
-      _cellTrackingService.createPost(loc: loc, text: text);
+      final cellTrackingService = ref.read(cellTrackingServiceProvider);
+      cellTrackingService.createPost(loc: loc, text: text);
     }
   }
 
@@ -228,7 +224,8 @@ class _MapScreenState extends State<MapScreen> {
         setState(() {
           _currentLocation = location;
         });
-        _cellTrackingService.onLocationChanged(location);
+        final cellTrackingService = ref.read(cellTrackingServiceProvider);
+        cellTrackingService.onLocationChanged(location);
       },
       onError: (Object error) {},
     );
@@ -268,7 +265,8 @@ class _MapScreenState extends State<MapScreen> {
       _currentLocation = newLocation;
     });
     _locationService.setVirtualLocation(newLocation);
-    _cellTrackingService.onLocationChanged(newLocation);
+    final cellTrackingService = ref.read(cellTrackingServiceProvider);
+    cellTrackingService.onLocationChanged(newLocation);
     _mapController.move(newLocation, _mapController.camera.zoom);
   }
 
@@ -356,7 +354,7 @@ class _MapScreenState extends State<MapScreen> {
                     return Marker(
                       point: bubblePosition.position,
                       width: 200,
-                      height: bubblePosition.height,
+                      height: 80,
                       alignment: Alignment.bottomCenter,
                       child: BubbleWidget(
                         post: bubblePosition.post,
@@ -399,7 +397,7 @@ class _MapScreenState extends State<MapScreen> {
             onPressed: _showCreatePostDialog,
             backgroundColor: Colors.orange,
             foregroundColor: Colors.white,
-            child: const Icon(Icons.add),
+            child: const Icon(Icons.edit),
           ),
         ],
       ),

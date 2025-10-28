@@ -1,9 +1,10 @@
 import openai
-
-from repositories.area_repository import get_area_by_id
-from repositories.cell_repository import get_cells_by_area_id
-from repositories.post_repository import get_user_posts_by_cell_ids_after_date
-from repositories.prompt_repository import get_prompts_by_area_id
+from datetime import datetime
+from application.container import container
+from interfaces.area_repository import AreaRepositoryInterface
+from interfaces.cell_repository import CellRepositoryInterface
+from interfaces.post_repository import PostRepositoryInterface
+from interfaces.prompt_repository import PromptRepositoryInterface
 
 SUMMARY_TEMPLATE = """
 # 指示
@@ -28,13 +29,19 @@ SUMMARY_TEMPLATE = """
 
 async def generate_summary(area_id: int) -> str | None:
     """エリアの投稿群からLLMを使用して新しい要約を生成"""
+    # 依存性注入コンテナからリポジトリを取得
+    area_repo: AreaRepositoryInterface = container.resolve(AreaRepositoryInterface)
+    cell_repo: CellRepositoryInterface = container.resolve(CellRepositoryInterface)
+    post_repo: PostRepositoryInterface = container.resolve(PostRepositoryInterface)
+    prompt_repo: PromptRepositoryInterface = container.resolve(PromptRepositoryInterface)
+    
     # エリア情報を取得
-    db_area = get_area_by_id(area_id)
+    db_area = area_repo.get_area_by_id(area_id)
     if not db_area:
         return None
 
     # 指定されたエリアの最新のプロンプト要約を取得
-    db_prompts = get_prompts_by_area_id(area_id)
+    db_prompts = prompt_repo.get_prompts_by_area_id(area_id)
     summary_text: str | None = None
     latest_created_at = "1970-01-01T00:00:00Z"
 
@@ -45,13 +52,14 @@ async def generate_summary(area_id: int) -> str | None:
         latest_created_at = str(sorted_prompts[0].created_at)
 
     # エリアIDに紐づくセルIDのリストを取得
-    db_cells = get_cells_by_area_id(area_id)
+    db_cells = cell_repo.get_cells_by_area_id(area_id)
     cell_ids = [cell.id for cell in db_cells]
     if not cell_ids:
         return None
 
     # 最新の要約作成日時以降の投稿を取得
-    db_posts = get_user_posts_by_cell_ids_after_date(cell_ids, latest_created_at)
+    target_date = datetime.fromisoformat(latest_created_at.replace("Z", "+00:00"))
+    db_posts = post_repo.get_user_posts_by_cell_ids_after_date(cell_ids, target_date)
     if not db_posts:
         return None
 

@@ -1,5 +1,6 @@
-from config.database import supabase
 from fastapi import APIRouter, HTTPException
+
+from infrastructure.clients.database_client import database_client
 from schemas.api import SignupResponse
 
 router = APIRouter(prefix="/signup", tags=["auth"])
@@ -10,7 +11,7 @@ async def signup():
     """匿名ユーザーとしてサインアップ"""
     try:
         # Supabaseで匿名認証を実行
-        auth_response = supabase.auth.sign_in_anonymously()
+        auth_response = database_client.supabase.auth.sign_in_anonymously()
 
         # セッションの作成を確認
         if not auth_response.session:

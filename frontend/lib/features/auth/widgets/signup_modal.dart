@@ -100,13 +100,7 @@ class _SignupModalState extends State<SignupModal> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text(
-                        '話しかけてみる',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                    : Text('話しかけてみる'),
               ),
             ),
 

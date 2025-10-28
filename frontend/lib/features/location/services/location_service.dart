@@ -7,105 +7,95 @@ import '../../map/widgets/dev_tools/dev_location_service.dart';
 class LocationService {
   final DevLocationService _devLocationService = DevLocationService();
 
-  /// 現在地を取得する（詳細ログ付き）
+  /// 現在地を取得する
   Future<LatLng> getCurrentLocation() async {
     // 開発ツールが有効で仮想位置が設定されている場合は仮想位置を優先
-    if (DevLocationService.isDevToolsEnabled) {
-      final virtualLocation = _devLocationService.getVirtualLocation();
-      if (virtualLocation != null) {
-        return virtualLocation;
-      }
+    final virtualLocation = _getVirtualLocationIfEnabled();
+    if (virtualLocation != null) {
+      return virtualLocation;
     }
 
     try {
-      // 1. 位置サービスが有効かチェック
-      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-
-      if (!serviceEnabled) {
+      // 位置サービスと権限をチェック
+      if (!await _checkLocationServiceEnabled()) {
         return LocationConfig.defaultLocation;
       }
 
-      // 2. 現在の権限状態をチェック
-      LocationPermission permission = await Geolocator.checkPermission();
-
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          return LocationConfig.defaultLocation;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
+      if (!await _checkAndRequestPermission()) {
         return LocationConfig.defaultLocation;
       }
 
-      // 3. 位置情報取得実行
-      final stopwatch = Stopwatch()..start();
-
+      // 位置情報を取得
       final Position position = await Geolocator.getCurrentPosition(
         locationSettings: LocationConfig.locationSettings,
       );
 
-      stopwatch.stop();
-
-      final location = LatLng(position.latitude, position.longitude);
-
-      // 精度チェック
-
-      return location;
+      return LatLng(position.latitude, position.longitude);
     } catch (e) {
       return LocationConfig.defaultLocation;
     }
   }
 
-  /// 位置情報のリアルタイムストリーム（ログ付き）
+  LatLng? _getVirtualLocationIfEnabled() {
+    if (DevLocationService.isDevToolsEnabled) {
+      return _devLocationService.getVirtualLocation();
+    }
+    return null;
+  }
+
+  Future<bool> _checkLocationServiceEnabled() async {
+    return await Geolocator.isLocationServiceEnabled();
+  }
+
+  Future<bool> _checkAndRequestPermission() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    return permission != LocationPermission.denied &&
+        permission != LocationPermission.deniedForever;
+  }
+
+  /// 位置情報のリアルタイムストリーム
   Stream<LatLng> getLocationStream() {
     // 開発ツールが有効で仮想位置が設定されている場合は仮想位置ストリームを返す
-    if (DevLocationService.isDevToolsEnabled) {
-      final virtualLocation = _devLocationService.getVirtualLocation();
-      if (virtualLocation != null) {
-        return Stream.periodic(
-          const Duration(seconds: 1),
-          (_) =>
-              _devLocationService.getVirtualLocation() ??
-              LocationConfig.defaultLocation,
-        );
-      }
+    final virtualLocation = _getVirtualLocationIfEnabled();
+    if (virtualLocation != null) {
+      return Stream.periodic(
+        const Duration(seconds: 1),
+        (_) =>
+            _devLocationService.getVirtualLocation() ??
+            LocationConfig.defaultLocation,
+      );
     }
 
     return Geolocator.getPositionStream(
           locationSettings: LocationConfig.locationSettings,
         )
-        .map((position) {
-          final location = LatLng(position.latitude, position.longitude);
-          return location;
-        })
-        .handleError((error, stackTrace) {
-          return LocationConfig.defaultLocation;
-        });
+        .map((position) => LatLng(position.latitude, position.longitude))
+        .handleError((error, stackTrace) => LocationConfig.defaultLocation);
   }
 
   /// 権限状態をチェック
   Future<LocationPermission> checkPermissionStatus() async {
-    final permission = await Geolocator.checkPermission();
-    return permission;
+    return await Geolocator.checkPermission();
   }
 
   /// 位置サービスが有効かチェック
   Future<bool> isLocationServiceEnabled() async {
-    final enabled = await Geolocator.isLocationServiceEnabled();
-    return enabled;
+    return await Geolocator.isLocationServiceEnabled();
   }
 
   /// 2点間の距離を計算
   double calculateDistance(LatLng point1, LatLng point2) {
-    final distance = Geolocator.distanceBetween(
+    return Geolocator.distanceBetween(
       point1.latitude,
       point1.longitude,
       point2.latitude,
       point2.longitude,
     );
-    return distance;
   }
 
   /// 仮想位置を設定（開発ツール用）

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
-from repositories.area_repository import get_area_by_id
-from repositories.cell_repository import get_or_create_cell
+from application.container import container
+from interfaces.area_repository import AreaRepositoryInterface
+from interfaces.cell_repository import CellRepositoryInterface
 from schemas.api import APIArea, APICell, CurrentResponse
 from utils.geo_hash import decode_wkt_location
 
@@ -11,8 +12,12 @@ router = APIRouter(prefix="/current", tags=["current"])
 @router.get("", response_model=CurrentResponse)
 async def get_current(lat: float, lon: float):
     """現在位置のエリアとセル情報を取得"""
+    # 依存性注入コンテナからリポジトリを取得
+    cell_repo: CellRepositoryInterface = container.resolve(CellRepositoryInterface)
+    area_repo: AreaRepositoryInterface = container.resolve(AreaRepositoryInterface)
+    
     # 座標からセルを取得または作成
-    cell = get_or_create_cell(lat, lon)
+    cell = cell_repo.get_or_create_cell(lat, lon)
     if not cell:
         raise HTTPException(status_code=404, detail="Cell could not be created")
 
@@ -20,7 +25,7 @@ async def get_current(lat: float, lon: float):
     location = decode_wkt_location(cell.location)
 
     # エリア情報を取得
-    db_area = get_area_by_id(cell.area_id)
+    db_area = area_repo.get_area_by_id(cell.area_id)
     if not db_area:
         raise HTTPException(status_code=404, detail="Area not found")
 

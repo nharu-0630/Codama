@@ -71,19 +71,18 @@ class LocationApiService {
         uri,
         headers: _authService.getAuthHeaders(),
       );
+
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final locationData = LocationData.fromJson(data);
-        return locationData;
-      } else if (response.statusCode == 401) {
+        return LocationData.fromJson(json.decode(response.body));
+      }
+
+      if (response.statusCode == 401) {
         throw UnauthorizedException('認証が必要です');
       }
 
       return null;
     } catch (e) {
-      if (e is UnauthorizedException) {
-        rethrow;
-      }
+      if (e is UnauthorizedException) rethrow;
       return null;
     }
   }
