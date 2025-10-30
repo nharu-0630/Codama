@@ -1,9 +1,8 @@
 import geohash  # type: ignore
+from config.settings import settings
+from infrastructure.clients.maps_client import maps_client
 from shapely import wkb
 from shapely.geometry import Point
-
-from infrastructure.clients.database_client import database_client
-from config.settings import settings
 
 
 def encode_geo_hash(lat: float, lon: float) -> str:
@@ -33,7 +32,7 @@ def encode_wkt_location(lat: float, lon: float) -> str:
 def get_area_name_from_geocode(lat: float, lon: float) -> str | None:
     """Google Mapsのジオコーディングからエリア名を取得"""
     # 緯度経度から住所情報を逆引き
-    geo_code = database_client.gmaps.reverse_geocode((lat, lon), language="ja")  # type: ignore
+    geo_code = maps_client.gmaps.reverse_geocode((lat, lon), language="ja")  # type: ignore
     if geo_code and len(geo_code) > 0:  # type: ignore
         # 住所コンポーネントから県、市、区の情報を取得
         admin_area = None

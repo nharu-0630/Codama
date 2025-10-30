@@ -1,9 +1,8 @@
 import asyncio
 import threading
 
-from fastapi import APIRouter
-
 from application.container import container
+from fastapi import APIRouter
 from interfaces.area_repository import AreaRepositoryInterface
 from interfaces.prompt_repository import PromptRepositoryInterface
 from schemas.api import UpdatePromptResponse
@@ -19,8 +18,10 @@ async def update_prompt():
     async def batch_update():
         # 依存性注入コンテナからリポジトリを取得
         area_repo: AreaRepositoryInterface = container.resolve(AreaRepositoryInterface)
-        prompt_repo: PromptRepositoryInterface = container.resolve(PromptRepositoryInterface)
-        
+        prompt_repo: PromptRepositoryInterface = container.resolve(
+            PromptRepositoryInterface
+        )
+
         # 全エリアを取得
         db_areas = area_repo.get_all_areas()
         area_ids = [area.id for area in db_areas]

@@ -10,8 +10,8 @@ components:
           title: Name
           type: string
       required:
-      - id
-      - name
+        - id
+        - name
       title: APIArea
       type: object
     APICell:
@@ -27,14 +27,14 @@ components:
           maxItems: 2
           minItems: 2
           prefixItems:
-          - type: number
-          - type: number
+            - type: number
+            - type: number
           title: Location
           type: array
       required:
-      - id
-      - geo_hash
-      - location
+        - id
+        - geo_hash
+        - location
       title: APICell
       type: object
     APIPost-Input:
@@ -42,12 +42,12 @@ components:
       properties:
         area:
           anyOf:
-          - $ref: '#/components/schemas/APIArea'
-          - type: 'null'
+            - $ref: "#/components/schemas/APIArea"
+            - type: "null"
         cell:
           anyOf:
-          - $ref: '#/components/schemas/APICell'
-          - type: 'null'
+            - $ref: "#/components/schemas/APICell"
+            - type: "null"
         content:
           title: Content
           type: string
@@ -59,31 +59,31 @@ components:
           maxItems: 2
           minItems: 2
           prefixItems:
-          - type: number
-          - type: number
+            - type: number
+            - type: number
           title: Location
           type: array
         replies:
           default: []
           items:
-            $ref: '#/components/schemas/APIPost-Input'
+            $ref: "#/components/schemas/APIPost-Input"
           title: Replies
           type: array
         user_uuid:
           anyOf:
-          - format: uuid
-            type: string
-          - type: 'null'
+            - format: uuid
+              type: string
+            - type: "null"
           title: User Uuid
         uuid:
           format: uuid
           title: Uuid
           type: string
       required:
-      - uuid
-      - content
-      - location
-      - created_at
+        - uuid
+        - content
+        - location
+        - created_at
       title: APIPost
       type: object
     APIPost-Output:
@@ -91,12 +91,12 @@ components:
       properties:
         area:
           anyOf:
-          - $ref: '#/components/schemas/APIArea'
-          - type: 'null'
+            - $ref: "#/components/schemas/APIArea"
+            - type: "null"
         cell:
           anyOf:
-          - $ref: '#/components/schemas/APICell'
-          - type: 'null'
+            - $ref: "#/components/schemas/APICell"
+            - type: "null"
         content:
           title: Content
           type: string
@@ -108,31 +108,31 @@ components:
           maxItems: 2
           minItems: 2
           prefixItems:
-          - type: number
-          - type: number
+            - type: number
+            - type: number
           title: Location
           type: array
         replies:
           default: []
           items:
-            $ref: '#/components/schemas/APIPost-Output'
+            $ref: "#/components/schemas/APIPost-Output"
           title: Replies
           type: array
         user_uuid:
           anyOf:
-          - format: uuid
-            type: string
-          - type: 'null'
+            - format: uuid
+              type: string
+            - type: "null"
           title: User Uuid
         uuid:
           format: uuid
           title: Uuid
           type: string
       required:
-      - uuid
-      - content
-      - location
-      - created_at
+        - uuid
+        - content
+        - location
+        - created_at
       title: APIPost
       type: object
     CreatePostRequest:
@@ -148,43 +148,43 @@ components:
           title: Lon
           type: number
       required:
-      - content
-      - lat
-      - lon
+        - content
+        - lat
+        - lon
       title: CreatePostRequest
       type: object
     CreatePostResponse:
       description: 投稿作成エンドポイントのレスポンス
       properties:
         post:
-          $ref: '#/components/schemas/APIPost-Output'
+          $ref: "#/components/schemas/APIPost-Output"
         similar_posts:
           items:
-            $ref: '#/components/schemas/APIPost-Output'
+            $ref: "#/components/schemas/APIPost-Output"
           title: Similar Posts
           type: array
       required:
-      - post
-      - similar_posts
+        - post
+        - similar_posts
       title: CreatePostResponse
       type: object
     CurrentResponse:
       description: 現在位置エンドポイントのレスポンス
       properties:
         area:
-          $ref: '#/components/schemas/APIArea'
+          $ref: "#/components/schemas/APIArea"
         cell:
-          $ref: '#/components/schemas/APICell'
+          $ref: "#/components/schemas/APICell"
       required:
-      - area
-      - cell
+        - area
+        - cell
       title: CurrentResponse
       type: object
     HTTPValidationError:
       properties:
         detail:
           items:
-            $ref: '#/components/schemas/ValidationError'
+            $ref: "#/components/schemas/ValidationError"
           title: Detail
           type: array
       title: HTTPValidationError
@@ -194,11 +194,11 @@ components:
       properties:
         posts:
           items:
-            $ref: '#/components/schemas/APIPost-Output'
+            $ref: "#/components/schemas/APIPost-Output"
           title: Posts
           type: array
       required:
-      - posts
+        - posts
       title: PostsResponse
       type: object
     SignupResponse:
@@ -214,9 +214,9 @@ components:
           title: User Id
           type: string
       required:
-      - access_token
-      - refresh_token
-      - user_id
+        - access_token
+        - refresh_token
+        - user_id
       title: SignupResponse
       type: object
     UpdatePromptResponse:
@@ -226,7 +226,7 @@ components:
           title: Success
           type: boolean
       required:
-      - success
+        - success
       title: UpdatePromptResponse
       type: object
     ValidationError:
@@ -234,8 +234,8 @@ components:
         loc:
           items:
             anyOf:
-            - type: string
-            - type: integer
+              - type: string
+              - type: integer
           title: Location
           type: array
         msg:
@@ -245,9 +245,9 @@ components:
           title: Error Type
           type: string
       required:
-      - loc
-      - msg
-      - type
+        - loc
+        - msg
+        - type
       title: ValidationError
       type: object
 info:
@@ -260,187 +260,187 @@ paths:
       description: ヘルスチェック
       operationId: health__get
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema: {}
           description: Successful Response
       summary: Health
       tags:
-      - health
+        - health
   /areas:
     get:
       description: 全エリアの一覧を取得
       operationId: get_areas_areas_get
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
                 items:
-                  $ref: '#/components/schemas/APIArea'
+                  $ref: "#/components/schemas/APIArea"
                 title: Response Get Areas Areas Get
                 type: array
           description: Successful Response
       summary: Get Areas
       tags:
-      - areas
+        - areas
   /batch/prompts/update:
     post:
       description: 全エリアのプロンプトをバッチ更新
       operationId: update_prompt_batch_prompts_update_post
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UpdatePromptResponse'
+                $ref: "#/components/schemas/UpdatePromptResponse"
           description: Successful Response
       summary: Update Prompt
       tags:
-      - batch
+        - batch
   /current:
     get:
       description: 現在位置のエリアとセル情報を取得
       operationId: get_current_current_get
       parameters:
-      - in: query
-        name: lat
-        required: true
-        schema:
-          title: Lat
-          type: number
-      - in: query
-        name: lon
-        required: true
-        schema:
-          title: Lon
-          type: number
+        - in: query
+          name: lat
+          required: true
+          schema:
+            title: Lat
+            type: number
+        - in: query
+          name: lon
+          required: true
+          schema:
+            title: Lon
+            type: number
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CurrentResponse'
+                $ref: "#/components/schemas/CurrentResponse"
           description: Successful Response
-        '422':
+        "422":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
       summary: Get Current
       tags:
-      - current
+        - current
   /posts:
     get:
       description: 現在位置の投稿一覧を取得
       operationId: get_posts_posts_get
       parameters:
-      - in: query
-        name: lat
-        required: true
-        schema:
-          title: Lat
-          type: number
-      - in: query
-        name: lon
-        required: true
-        schema:
-          title: Lon
-          type: number
-      - in: header
-        name: authorization
-        required: true
-        schema:
-          title: Authorization
-          type: string
+        - in: query
+          name: lat
+          required: true
+          schema:
+            title: Lat
+            type: number
+        - in: query
+          name: lon
+          required: true
+          schema:
+            title: Lon
+            type: number
+        - in: header
+          name: authorization
+          required: true
+          schema:
+            title: Authorization
+            type: string
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PostsResponse'
+                $ref: "#/components/schemas/PostsResponse"
           description: Successful Response
-        '422':
+        "422":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
       summary: Get Posts
       tags:
-      - posts
+        - posts
     post:
       description: 新しい投稿を作成
       operationId: create_post_posts_post
       parameters:
-      - in: header
-        name: authorization
-        required: true
-        schema:
-          title: Authorization
-          type: string
+        - in: header
+          name: authorization
+          required: true
+          schema:
+            title: Authorization
+            type: string
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreatePostRequest'
+              $ref: "#/components/schemas/CreatePostRequest"
         required: true
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreatePostResponse'
+                $ref: "#/components/schemas/CreatePostResponse"
           description: Successful Response
-        '422':
+        "422":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
       summary: Create Post
       tags:
-      - posts
+        - posts
   /posts/me:
     get:
       description: 自分の投稿一覧を取得
       operationId: get_my_posts_posts_me_get
       parameters:
-      - in: header
-        name: authorization
-        required: true
-        schema:
-          title: Authorization
-          type: string
+        - in: header
+          name: authorization
+          required: true
+          schema:
+            title: Authorization
+            type: string
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PostsResponse'
+                $ref: "#/components/schemas/PostsResponse"
           description: Successful Response
-        '422':
+        "422":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
       summary: Get My Posts
       tags:
-      - posts
+        - posts
   /signup:
     post:
       description: 匿名ユーザーとしてサインアップ
       operationId: signup_signup_post
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SignupResponse'
+                $ref: "#/components/schemas/SignupResponse"
           description: Successful Response
       summary: Signup
       tags:
-      - auth
+        - auth

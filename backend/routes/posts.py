@@ -1,10 +1,9 @@
 from time import sleep
 
-from fastapi import APIRouter, Depends, HTTPException
-
 from application.container import container
 from config.settings import settings
 from domain.entities import LLMPost, UserPost
+from fastapi import APIRouter, Depends, HTTPException
 from interfaces.cell_repository import CellRepositoryInterface
 from interfaces.embedding_repository import EmbeddingRepositoryInterface
 from interfaces.post_repository import PostRepositoryInterface

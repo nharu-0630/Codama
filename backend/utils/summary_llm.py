@@ -1,5 +1,6 @@
-import openai
 from datetime import datetime
+
+import openai
 from application.container import container
 from interfaces.area_repository import AreaRepositoryInterface
 from interfaces.cell_repository import CellRepositoryInterface
@@ -33,8 +34,10 @@ async def generate_summary(area_id: int) -> str | None:
     area_repo: AreaRepositoryInterface = container.resolve(AreaRepositoryInterface)
     cell_repo: CellRepositoryInterface = container.resolve(CellRepositoryInterface)
     post_repo: PostRepositoryInterface = container.resolve(PostRepositoryInterface)
-    prompt_repo: PromptRepositoryInterface = container.resolve(PromptRepositoryInterface)
-    
+    prompt_repo: PromptRepositoryInterface = container.resolve(
+        PromptRepositoryInterface
+    )
+
     # エリア情報を取得
     db_area = area_repo.get_area_by_id(area_id)
     if not db_area:

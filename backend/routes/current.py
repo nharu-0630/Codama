@@ -1,6 +1,5 @@
-from fastapi import APIRouter, HTTPException
-
 from application.container import container
+from fastapi import APIRouter, HTTPException
 from interfaces.area_repository import AreaRepositoryInterface
 from interfaces.cell_repository import CellRepositoryInterface
 from schemas.api import APIArea, APICell, CurrentResponse
@@ -15,7 +14,7 @@ async def get_current(lat: float, lon: float):
     # 依存性注入コンテナからリポジトリを取得
     cell_repo: CellRepositoryInterface = container.resolve(CellRepositoryInterface)
     area_repo: AreaRepositoryInterface = container.resolve(AreaRepositoryInterface)
-    
+
     # 座標からセルを取得または作成
     cell = cell_repo.get_or_create_cell(lat, lon)
     if not cell:

@@ -1,7 +1,6 @@
 from fastapi import Header, HTTPException
-from supabase_auth import User
-
 from infrastructure.clients.database_client import database_client
+from supabase_auth import User
 
 
 async def get_current_user(authorization: str = Header(...)) -> User:
