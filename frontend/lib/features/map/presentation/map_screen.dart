@@ -181,11 +181,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(width: 8),
             ],
             Text(
-              isLandMemory ? '土地の記憶' : 'ユーザー投稿',
-              style: TextStyle(
+              isLandMemory ? 'とちの声' : 'ひとの声',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 color: isLandMemory
                     ? Colors.purple.shade700
                     : Colors.blue.shade700,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
@@ -193,18 +194,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
+
           children: [
             Text(
               post.text,
-              style: TextStyle(
-                fontStyle: isLandMemory ? FontStyle.italic : FontStyle.normal,
-                color: isLandMemory ? Colors.purple.shade600 : Colors.black87,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: isLandMemory
+                    ? Colors.purple.shade800
+                    : Colors.blue.shade800,
               ),
             ),
-            const SizedBox(height: 8),
             Text(
-              '${isLandMemory ? "出現" : "投稿"}時刻: ${post.createdAt.toString().substring(0, 19)}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              '聞こえたとき: ${post.createdAt.toLocal().toString().substring(0, 16)}',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
@@ -284,11 +286,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(_currentAreaName ?? '読み込み中...'),
-        titleTextStyle: const TextStyle(
-          color: Colors.black,
-          fontSize: 25,
-          fontWeight: FontWeight.bold,
-        ),
+        titleTextStyle: Theme.of(
+          context,
+        ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
       ),
       body: Stack(
         children: [

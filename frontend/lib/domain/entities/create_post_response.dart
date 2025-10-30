@@ -4,10 +4,7 @@ class CreatePostResponse {
   final Post post;
   final List<Post> similarPosts;
 
-  const CreatePostResponse({
-    required this.post,
-    required this.similarPosts,
-  });
+  const CreatePostResponse({required this.post, required this.similarPosts});
 
   factory CreatePostResponse.fromApiResponse(dynamic json) {
     return CreatePostResponse(

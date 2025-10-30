@@ -2,10 +2,7 @@ class LocationData {
   final Area area;
   final Cell cell;
 
-  const LocationData({
-    required this.area,
-    required this.cell,
-  });
+  const LocationData({required this.area, required this.cell});
 
   factory LocationData.fromApiResponse(dynamic json) {
     return LocationData(
@@ -19,23 +16,14 @@ class Area {
   final int id;
   final String name;
 
-  const Area({
-    required this.id,
-    required this.name,
-  });
+  const Area({required this.id, required this.name});
 
   factory Area.fromJson(Map<String, dynamic> json) {
-    return Area(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-    );
+    return Area(id: json['id'] ?? 0, name: json['name'] ?? '');
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-    };
+    return {'id': id, 'name': name};
   }
 }
 
@@ -44,11 +32,7 @@ class Cell {
   final String geoHash;
   final List<double> location;
 
-  const Cell({
-    required this.id,
-    required this.geoHash,
-    required this.location,
-  });
+  const Cell({required this.id, required this.geoHash, required this.location});
 
   factory Cell.fromJson(Map<String, dynamic> json) {
     return Cell(
@@ -59,11 +43,7 @@ class Cell {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'geo_hash': geoHash,
-      'location': location,
-    };
+    return {'id': id, 'geo_hash': geoHash, 'location': location};
   }
 
   @override

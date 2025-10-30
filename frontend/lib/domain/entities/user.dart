@@ -12,10 +12,7 @@ class User {
     this.lastLoginAt,
   });
 
-  factory User.empty() => User(
-    id: '',
-    createdAt: DateTime.now(),
-  );
+  factory User.empty() => User(id: '', createdAt: DateTime.now());
 
   bool get isAuthenticated => id.isNotEmpty;
 

@@ -40,10 +40,11 @@ class BubbleManager {
     String? currentUserId,
   ) {
     // 投稿と返信を展開して、画面内の投稿のみフィルタリング
-    final visiblePosts = _flattenPosts(posts)
-        .where((post) => _isInViewBounds(post, viewBounds))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final visiblePosts =
+        _flattenPosts(
+            posts,
+          ).where((post) => _isInViewBounds(post, viewBounds)).toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     // 通常投稿のみ最大数に制限し、一時投稿は全て含める
     final limitedPosts = _limitRegularPosts(visiblePosts);

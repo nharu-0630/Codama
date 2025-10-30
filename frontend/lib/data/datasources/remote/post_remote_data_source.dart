@@ -29,7 +29,9 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
       return CreatePostResponse(
         post: response.post, // response.post is already a Post object
         similarPosts: List<Post>.from(
-          response.similarPosts.map((data) => data), // similarPosts are already Post objects
+          response.similarPosts.map(
+            (data) => data,
+          ), // similarPosts are already Post objects
         ),
       );
     } catch (e) {
@@ -42,9 +44,7 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   Future<List<Post>> getPostsByLocation(double lat, double lon) async {
     try {
       final response = await _apiClient.getPosts(lat, lon);
-      return List<Post>.from(
-        response.posts.map((data) => Post.fromJson(data)),
-      );
+      return List<Post>.from(response.posts.map((data) => Post.fromJson(data)));
     } catch (e) {
       _logger.e('Failed to get posts: $e');
       rethrow;

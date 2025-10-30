@@ -11,7 +11,7 @@ import '../models/post.dart';
 class PostService {
   static String get _baseUrl =>
       dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000';
-  
+
   final AuthService _authService;
 
   PostService({required AuthService authService}) : _authService = authService;

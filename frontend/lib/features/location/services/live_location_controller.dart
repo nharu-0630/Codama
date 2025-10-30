@@ -100,23 +100,24 @@ class LiveLocationController with WidgetsBindingObserver {
 
   void _startRealLocationStream() {
     _positionSubscription?.cancel();
-    _positionSubscription = Geolocator.getPositionStream(
-      locationSettings: LocationConfig.locationSettings,
-    )
-        .distinct(
-          (previous, current) =>
-              previous.latitude == current.latitude &&
-              previous.longitude == current.longitude,
-        )
-        .listen(
-          (Position position) {
-            final location = LatLng(position.latitude, position.longitude);
-            _onLocationUpdate?.call(location);
-          },
-          onError: (error, stackTrace) {
-            _onError?.call(error);
-          },
-        );
+    _positionSubscription =
+        Geolocator.getPositionStream(
+              locationSettings: LocationConfig.locationSettings,
+            )
+            .distinct(
+              (previous, current) =>
+                  previous.latitude == current.latitude &&
+                  previous.longitude == current.longitude,
+            )
+            .listen(
+              (Position position) {
+                final location = LatLng(position.latitude, position.longitude);
+                _onLocationUpdate?.call(location);
+              },
+              onError: (error, stackTrace) {
+                _onError?.call(error);
+              },
+            );
   }
 
   void _startVirtualLocationStream() {
