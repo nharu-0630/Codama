@@ -1,4 +1,6 @@
 import 'package:codama/core/api/openapi_factory.dart';
+import 'package:codama/core/providers/auth_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:openapi/openapi.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,6 +11,7 @@ class ApiService {
   final SharedPreferences _sharedPreferences;
   final LoggerService _logger;
   final String _baseUrl;
+  final Ref _ref;
 
   Openapi? _client;
 
@@ -17,10 +20,14 @@ class ApiService {
     required SharedPreferences sharedPreferences,
     required LoggerService logger,
     required String baseUrl,
+    required Ref ref,
   }) : _openApiFactory = openApiFactory,
        _sharedPreferences = sharedPreferences,
        _logger = logger,
-       _baseUrl = baseUrl;
+       _baseUrl = baseUrl,
+       _ref = ref {
+    _openApiFactory.apiService = this;
+  }
 
   String? get accessToken => _sharedPreferences.getString('access_token');
 
@@ -54,6 +61,7 @@ class ApiService {
       await _sharedPreferences.setString('user_id', signupResponse.userId);
       _invalidateClient();
 
+      _ref.read(authStateProvider.notifier).setAuthenticated(true);
       return signupResponse;
     } catch (e) {
       _logger.e('サインアップに失敗しました: $e');
@@ -68,6 +76,7 @@ class ApiService {
       await _sharedPreferences.remove('user_id');
       _invalidateClient();
 
+      _ref.read(authStateProvider.notifier).setAuthenticated(false);
       _logger.i('サインアウトしました');
     } catch (e) {
       _logger.e('サインアウトに失敗しました: $e');
@@ -76,7 +85,9 @@ class ApiService {
   }
 
   bool isAuthenticated() {
-    return accessToken != null;
+    final isAuth = accessToken != null;
+    _ref.read(authStateProvider.notifier).setAuthenticated(isAuth);
+    return isAuth;
   }
 
   Future<CurrentResponse?> getCurrentLocation(double lat, double lon) async {

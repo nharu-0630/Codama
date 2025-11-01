@@ -1,10 +1,13 @@
 import 'package:codama/core/constants/config.dart';
+import 'package:codama/core/services/api_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:openapi/openapi.dart';
 
 class OpenApiFactory {
-  OpenApiFactory();
+  ApiService? apiService;
+  
+  OpenApiFactory({this.apiService});
 
   Openapi build({required String baseUrl, String? accessToken}) {
     final BaseOptions options = BaseOptions(
@@ -26,6 +29,9 @@ class OpenApiFactory {
     if (accessToken != null) {
       dio.interceptors.add(_AuthInterceptor(accessToken));
     }
+    if (apiService != null) {
+      dio.interceptors.add(_ErrorInterceptor(apiService!));
+    }
     return Openapi(dio: dio);
   }
 }
@@ -42,5 +48,19 @@ class _AuthInterceptor extends Interceptor {
   ) async {
     options.headers['Authorization'] = 'Bearer $token';
     return super.onRequest(options, handler);
+  }
+}
+
+class _ErrorInterceptor extends Interceptor {
+  _ErrorInterceptor(this.apiService);
+
+  final ApiService apiService;
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (err.response?.statusCode == 401) {
+      apiService.signOut();
+    }
+    handler.next(err);
   }
 }

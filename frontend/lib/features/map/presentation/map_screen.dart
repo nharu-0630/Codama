@@ -1,5 +1,6 @@
 import 'package:codama/core/constants/config.dart';
 import 'package:codama/core/di/providers.dart';
+import 'package:codama/core/providers/auth_provider.dart';
 import 'package:codama/features/auth/widgets/signup_modal.dart';
 import 'package:codama/features/location/services/live_location_controller.dart';
 import 'package:codama/features/location/services/location_service.dart';
@@ -263,6 +264,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<bool>(authStateProvider, (previous, next) {
+      if (previous == true && next == false) {
+        _showSignupModal();
+      }
+    });
+
     if (!_isInitialized) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
