@@ -1,8 +1,7 @@
-import 'package:dio/dio.dart';
+import 'package:codama/core/api/openapi_factory.dart';
 import 'package:openapi/openapi.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../api/openapi_factory.dart';
 import 'logger_service.dart';
 
 class ApiService {
@@ -36,44 +35,30 @@ class ApiService {
     _client = null;
   }
 
-  Future<T> _makeApiCall<T>(
-    Future<Response<T>> Function() apiCall,
-    String operation, {
-    bool requiresAuth = false,
-  }) async {
+  Future<SignupResponse> signUp() async {
     try {
-      if (requiresAuth && !isAuthenticated()) {
-        throw Exception('User not authenticated');
-      }
-
-      final response = await apiCall();
-
+      final response = await client.getAuthApi().signupSignupPost();
       if (response.data == null) {
-        throw Exception('Failed $operation: No response data');
+        throw Exception('サインアップに失敗しました: レスポンスデータがありません');
       }
 
-      return response.data!;
+      final signupResponse = response.data!;
+      await _sharedPreferences.setString(
+        'access_token',
+        signupResponse.accessToken,
+      );
+      await _sharedPreferences.setString(
+        'refresh_token',
+        signupResponse.refreshToken,
+      );
+      await _sharedPreferences.setString('user_id', signupResponse.userId);
+      _invalidateClient();
+
+      return signupResponse;
     } catch (e) {
-      _logger.e('Failed $operation: $e');
+      _logger.e('サインアップに失敗しました: $e');
       rethrow;
     }
-  }
-
-  // Auth methods
-  Future<SignupResponse> signUp() async {
-    final response = await _makeApiCall(
-      () => client.getAuthApi().signupSignupPost(),
-      'to sign up',
-    );
-
-    // Save tokens
-    await _sharedPreferences.setString('access_token', response.accessToken);
-    await _sharedPreferences.setString('refresh_token', response.refreshToken);
-    await _sharedPreferences.setString('user_id', response.userId);
-
-    _invalidateClient();
-
-    return response;
   }
 
   Future<void> signOut() async {
@@ -81,82 +66,95 @@ class ApiService {
       await _sharedPreferences.remove('access_token');
       await _sharedPreferences.remove('refresh_token');
       await _sharedPreferences.remove('user_id');
-
       _invalidateClient();
 
-      _logger.i('User signed out successfully');
+      _logger.i('サインアウトしました');
     } catch (e) {
-      _logger.e('Failed to sign out: $e');
+      _logger.e('サインアウトに失敗しました: $e');
       rethrow;
     }
-  }
-
-  SignupResponse? getCurrentUser() {
-    final accessToken = _sharedPreferences.getString('access_token');
-    final refreshToken = _sharedPreferences.getString('refresh_token');
-    final userId = _sharedPreferences.getString('user_id');
-
-    if (accessToken == null || refreshToken == null || userId == null) {
-      return null;
-    }
-
-    return SignupResponse(
-      (b) => b
-        ..accessToken = accessToken
-        ..refreshToken = refreshToken
-        ..userId = userId,
-    );
   }
 
   bool isAuthenticated() {
     return accessToken != null;
   }
 
-  // Location methods
   Future<CurrentResponse?> getCurrentLocation(double lat, double lon) async {
     try {
-      return await _makeApiCall(
-        () => client.getCurrentApi().getCurrentCurrentGet(lat: lat, lon: lon),
-        'to get current location for ($lat, $lon)',
+      final response = await client.getCurrentApi().getCurrentCurrentGet(
+        lat: lat,
+        lon: lon,
       );
+      if (response.data == null) {
+        _logger.w('現在地情報の取得に失敗しました: レスポンスデータがありません');
+        return null;
+      }
+
+      return response.data!;
     } catch (e) {
-      _logger.w('No location data received for coordinates: ($lat, $lon)');
+      _logger.e('現在地情報の取得に失敗しました: $e');
       return null;
     }
   }
 
-  // Post methods
   Future<CreatePostResponse> createPost({
     required double lat,
     required double lng,
     required String text,
   }) async {
-    final request = CreatePostRequest(
-      (b) => b
-        ..content = text
-        ..lat = lat
-        ..lon = lng,
-    );
+    try {
+      if (!isAuthenticated()) {
+        throw Exception('認証されていません');
+      }
 
-    return await _makeApiCall(
-      () => client.getPostsApi().createPostPostsPost(
+      final request = CreatePostRequest(
+        (b) => b
+          ..content = text
+          ..lat = lat
+          ..lon = lng,
+      );
+
+      final response = await client.getPostsApi().createPostPostsPost(
         authorization: 'Bearer $accessToken',
         createPostRequest: request,
-      ),
-      'to create post',
-      requiresAuth: true,
-    );
+      );
+      if (response.data == null) {
+        throw Exception('投稿の作成に失敗しました: レスポンスデータがありません');
+      }
+
+      return response.data!;
+    } catch (e) {
+      _logger.e('投稿の作成に失敗しました: $e');
+      rethrow;
+    }
+  }
+
+  String? getCurrentUserId() {
+    return _sharedPreferences.getString('user_id');
   }
 
   Future<PostsResponse> getPostsByLocation(double lat, double lon) async {
-    return await _makeApiCall(
-      () => client.getPostsApi().getPostsPostsGet(
-        authorization: 'Bearer $accessToken',
+    try {
+      if (!isAuthenticated()) {
+        throw Exception('認証されていません');
+      }
+
+      final response = await client.getPostsApi().getPostsPostsGet(
         lat: lat,
         lon: lon,
-      ),
-      'to get posts for location ($lat, $lon)',
-      requiresAuth: true,
-    );
+        authorization: 'Bearer $accessToken',
+      );
+
+      if (response.data == null) {
+        _logger.w('投稿データの取得に失敗しました: ($lat, $lon)');
+        throw Exception('投稿データの取得に失敗しました: レスポンスデータがありません');
+      }
+
+      return response.data!;
+    } catch (e) {
+      _logger.e('投稿データの取得に失敗しました: ($lat, $lon): $e');
+      rethrow;
+    }
   }
 }
+

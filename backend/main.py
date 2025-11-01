@@ -1,7 +1,5 @@
-import yaml
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.utils import get_openapi
 
 from application.container import container
 from routes import areas, auth, batch, current, health, posts
@@ -21,7 +19,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     # 依存性注入コンテナを使用するための設定
-    app.container = container
+    # FastAPIインスタンスにカスタム属性を追加
+    app.container = container  # type: ignore[attr-defined]
 
     # 各エンドポイントのルーターを登録
     app.include_router(health.router)

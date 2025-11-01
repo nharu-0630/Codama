@@ -4,6 +4,10 @@ import 'package:latlong2/latlong.dart';
 class Config {
   Config._();
 
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:8000',
+  );
   static const String userAgent = 'CodamaApp';
   static const Duration timeout = Duration(seconds: 5);
 

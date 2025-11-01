@@ -1,4 +1,5 @@
 import 'package:codama/core/api/openapi_factory.dart';
+import 'package:codama/core/constants/config.dart';
 import 'package:codama/core/services/api_service.dart';
 import 'package:codama/core/services/logger_service.dart';
 import 'package:codama/features/location/services/cell_tracking_service.dart';
@@ -28,7 +29,7 @@ final apiServiceProvider = Provider<ApiService>((ref) {
     openApiFactory: openApiFactory,
     sharedPreferences: sharedPreferences,
     logger: logger,
-    baseUrl: 'http://localhost:8000',
+    baseUrl: Config.baseUrl,
   );
 });
 

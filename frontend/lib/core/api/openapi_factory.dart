@@ -12,7 +12,7 @@ class OpenApiFactory {
       connectTimeout: Config.timeout,
       receiveTimeout: Config.timeout,
       headers: <String, String>{
-        // 'Content-Type': 'application/json',
+        'Content-Type': 'application/json',
         'User-Agent': Config.userAgent,
       },
     );

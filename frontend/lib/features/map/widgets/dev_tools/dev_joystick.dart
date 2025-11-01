@@ -106,7 +106,6 @@ class _DevJoystickState extends State<DevJoystick> {
     setState(() {
       _isDragging = true;
     });
-    // LocationConfig.log(_logTag, '🎮 ジョイスティック操作開始');
     _startMovementTimer();
   }
 
@@ -134,7 +133,6 @@ class _DevJoystickState extends State<DevJoystick> {
       _knobOffset = Offset.zero;
       _isDragging = false;
     });
-    // LocationConfig.log(_logTag, '🎮 ジョイスティック操作終了');
     _stopMovementTimer();
   }
 

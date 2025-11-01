@@ -150,11 +150,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         west: camera.visibleBounds.west,
       );
       final apiService = ref.read(apiServiceProvider);
-      final currentUser = apiService.getCurrentUser();
+      final currentUserId = apiService.getCurrentUserId();
       final bubblePositions = _bubbleManager.layoutBubbles(
         _posts,
         bounds,
-        currentUser?.userId ?? '',
+        currentUserId ?? '',
       );
       setState(() {
         _bubblePositions = bubblePositions;

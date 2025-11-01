@@ -94,8 +94,8 @@ class CellTrackingService {
   }
 
   Future<void> createPost({required LatLng loc, required String text}) async {
-    final currentUser = _apiService.getCurrentUser();
-    if (currentUser == null) return;
+    final currentUserId = _apiService.getCurrentUserId();
+    if (currentUserId == null) return;
 
     // Create optimistic post using APIPostOutput structure
     final optimisticPostId = 'local_${DateTime.now().millisecondsSinceEpoch}';
@@ -105,7 +105,7 @@ class CellTrackingService {
         ..content = text
         ..createdAt = DateTime.now()
         ..location.addAll([JsonObject(loc.latitude), JsonObject(loc.longitude)])
-        ..userUuid = currentUser.userId
+        ..userUuid = currentUserId
         ..replies = ListBuilder<APIPostOutput>(),
     );
 
