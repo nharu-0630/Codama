@@ -94,9 +94,6 @@ class Config {
 
   /// ブランドカラー - 紫系統（LLMの返信）
   static const Color brandPurpleLight = Color(
-    0xFFF3E5F5,
-  ); // Colors.purple.shade50
-  static const Color brandPurpleLightWithAlpha = Color(
     0xE6F3E5F5,
   ); // Colors.purple.shade50 with alpha: 0.9
   static const Color brandPurpleMedium = Color(
@@ -173,7 +170,7 @@ class Config {
   static const double bubbleMinWidth = 60.0;
   static const double bubbleMaxWidth = 200.0;
   static const double bubbleTailWidth = 16.0;
-  static const double bubbleTailHeight = 6.0;
+  static const double bubbleTailHeight = 8.0;
   static const double bubbleBlurRadius = 3.0;
 
   /// ジョイスティック設定
@@ -188,12 +185,4 @@ class Config {
   /// ログ設定
   static const int loggerErrorMethodCount = 8;
   static const int loggerLineLength = 120;
-
-  // ==================== 地図関連設定 ====================
-
-  /// マーカー設定
-  static const double markerWidth = 40.0;
-  static const double markerHeight = 40.0;
-  static const double markerIconWidth = 200.0;
-  static const double markerIconHeight = 80.0;
 }

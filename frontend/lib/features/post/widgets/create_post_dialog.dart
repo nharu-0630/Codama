@@ -17,9 +17,6 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
   @override
   void initState() {
     super.initState();
-    _textController.addListener(() {
-      setState(() {}); // 文字数カウンターを更新
-    });
   }
 
   @override
@@ -35,13 +32,6 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('投稿内容を入力してください')));
-      return;
-    }
-
-    if (text.length > Config.maxPostLength) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('投稿は${Config.maxPostLength}文字以内で入力してください')),
-      );
       return;
     }
 
@@ -77,43 +67,17 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
         'あなたの心の声を聞かせて',
         style: Theme.of(context).textTheme.titleMedium,
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 投稿内容入力
-          TextField(
-            controller: _textController,
-            maxLines: 4,
-            maxLength: Config.maxPostLength,
-            decoration: const InputDecoration(
-              hintText: 'ここに投稿内容を入力してください...',
-              border: OutlineInputBorder(),
-              counterText: '', // 文字数カウンターを非表示
-            ),
-            enabled: !_isSubmitting,
-          ),
-
-          const SizedBox(height: Config.spacingSmall),
-
-          // 文字数表示
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '${_textController.text.length}/${Config.maxPostLength}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: _textController.text.length > Config.maxPostLength
-                    ? Config.neutralRed
-                    : Config.neutralGrey,
-              ),
-            ),
-          ),
-        ],
+      content: TextField(
+        controller: _textController,
+        maxLines: 4,
+        maxLength: Config.maxPostLength,
+        decoration: const InputDecoration(border: OutlineInputBorder()),
+        enabled: !_isSubmitting,
       ),
       actions: [
         TextButton(
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('キャンセル'),
+          child: const Text('とじる'),
         ),
         ElevatedButton(
           onPressed: _isSubmitting ? null : _onSubmit,

@@ -74,7 +74,7 @@ class _DevJoystickState extends State<DevJoystick> {
                 width: Config.joystickKnobSize,
                 height: Config.joystickKnobSize,
                 decoration: BoxDecoration(
-                  color: _isDragging ? Config.brandBlueMedium : Config.neutralWhite,
+                  color: _isDragging ? Config.brandOrange : Config.neutralWhite,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -88,7 +88,9 @@ class _DevJoystickState extends State<DevJoystick> {
                 ),
                 child: Icon(
                   Icons.location_searching,
-                  color: _isDragging ? Config.neutralWhite : Config.neutralBlack87,
+                  color: _isDragging
+                      ? Config.neutralWhite
+                      : Config.neutralBlack87,
                   size: Config.joystickIconSize,
                 ),
               ),
@@ -114,10 +116,7 @@ class _DevJoystickState extends State<DevJoystick> {
 
   void _onPanUpdate(DragUpdateDetails details) {
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final center = Offset(
-      Config.joystickSize / 2,
-      Config.joystickSize / 2,
-    );
+    final center = Offset(Config.joystickSize / 2, Config.joystickSize / 2);
     final localPosition = renderBox.globalToLocal(details.globalPosition);
 
     // 中心からの相対位置を計算
@@ -151,7 +150,8 @@ class _DevJoystickState extends State<DevJoystick> {
     // 緯度・経度の変更量を計算
     // X軸: 東西方向（経度）、Y軸: 南北方向（緯度、反転）
     final deltaLng = normalizedX * Config.joystickMovementSensitivity;
-    final deltaLat = -normalizedY * Config.joystickMovementSensitivity; // Y軸反転（上=北）
+    final deltaLat =
+        -normalizedY * Config.joystickMovementSensitivity; // Y軸反転（上=北）
 
     // 新しい仮想位置を計算
     final newLocation = LatLng(
@@ -166,14 +166,11 @@ class _DevJoystickState extends State<DevJoystick> {
   /// 移動タイマーを開始
   void _startMovementTimer() {
     _movementTimer?.cancel();
-    _movementTimer = Timer.periodic(
-      Config.joystickUpdateInterval,
-      (_) {
-        if (_isDragging && _knobOffset != Offset.zero) {
-          _updateVirtualLocation(_knobOffset);
-        }
-      },
-    );
+    _movementTimer = Timer.periodic(Config.joystickUpdateInterval, (_) {
+      if (_isDragging && _knobOffset != Offset.zero) {
+        _updateVirtualLocation(_knobOffset);
+      }
+    });
   }
 
   /// 移動タイマーを停止

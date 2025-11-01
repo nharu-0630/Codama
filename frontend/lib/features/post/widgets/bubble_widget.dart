@@ -31,7 +31,7 @@ class BubbleWidget extends StatelessWidget {
     final baseBubbleColor = switch (displayKind) {
       BubbleDisplayKind.me => Config.brandBlueLight,
       BubbleDisplayKind.other => Config.brandGreenLight,
-      BubbleDisplayKind.landReply => Config.brandPurpleLightWithAlpha,
+      BubbleDisplayKind.landReply => Config.brandPurpleLight,
       BubbleDisplayKind.userReply => Config.brandOrangeLight,
     };
 
