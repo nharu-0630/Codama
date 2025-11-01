@@ -442,7 +442,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final currentLoc = _shouldShowDevTools
         ? _virtualLocation
         : _currentLocation;
-    if (currentLoc == null) return;
+    if (currentLoc == null) {
+      return;
+    }
 
     // Create view bounds based on current location and radius
     const distance = Distance();
@@ -473,8 +475,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _bubblePositions = newPositions;
           });
         })
-        .catchError((e) {
-          // Handle error silently
-        });
+        .catchError((e) {});
   }
 }

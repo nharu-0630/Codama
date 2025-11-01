@@ -39,35 +39,24 @@ class BubbleManager {
     String? currentUserId,
   ) {
     // 投稿と返信を展開して、画面内の投稿のみフィルタリング
-    final visiblePosts =
-        _flattenPosts(
-            posts,
-          ).where((post) => _isInViewBounds(post, viewBounds)).toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final flattenedPosts = _flattenPosts(posts);
+
+    List<APIPostOutput> visiblePosts = [];
+    try {
+      visiblePosts = flattenedPosts
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    } catch (e) {
+      visiblePosts = flattenedPosts; // Fallback to all posts
+    }
 
     // 通常投稿のみ最大数に制限し、一時投稿は全て含める
     final limitedPosts = _limitRegularPosts(visiblePosts);
 
     // BubblePosition作成
-    return limitedPosts
+    final bubblePositions = limitedPosts
         .map((post) => _createBubblePosition(post, currentUserId))
         .toList();
-  }
-
-  bool _isInViewBounds(APIPostOutput post, ViewBounds viewBounds) {
-    // Extract lat/lon from location array [lat, lon]
-    final location = post.location;
-    final lat = location.isNotEmpty
-        ? (location[0] as num?)?.toDouble() ?? 0.0
-        : 0.0;
-    final lng = location.length > 1
-        ? (location[1] as num?)?.toDouble() ?? 0.0
-        : 0.0;
-
-    return lat >= viewBounds.south &&
-        lat <= viewBounds.north &&
-        lng >= viewBounds.west &&
-        lng <= viewBounds.east;
+    return bubblePositions;
   }
 
   List<APIPostOutput> _limitRegularPosts(List<APIPostOutput> visiblePosts) {
@@ -83,20 +72,43 @@ class BubbleManager {
     APIPostOutput post,
     String? currentUserId,
   ) {
-    // Extract lat/lon from location array [lat, lon]
-    final location = post.location;
-    final lat = location.isNotEmpty
-        ? (location[0] as num?)?.toDouble() ?? 0.0
-        : 0.0;
-    final lng = location.length > 1
-        ? (location[1] as num?)?.toDouble() ?? 0.0
-        : 0.0;
+    try {
+      // Extract lat/lon from location array [lat, lon]
+      final location = post.location;
 
-    return BubblePosition(
-      post: post,
-      position: LatLng(lat, lng),
-      displayKind: determineDisplayKind(post, currentUserId),
-    );
+      double lat = 0.0;
+      double lng = 0.0;
+
+      if (location.isNotEmpty) {
+        final latValue = location[0];
+        if (latValue != null && latValue.toString().isNotEmpty) {
+          lat = double.tryParse(latValue.toString()) ?? 0.0;
+        }
+      }
+
+      if (location.length > 1) {
+        final lngValue = location[1];
+        if (lngValue != null && lngValue.toString().isNotEmpty) {
+          lng = double.tryParse(lngValue.toString()) ?? 0.0;
+        }
+      }
+
+      return BubblePosition(
+        post: post,
+        position: LatLng(lat, lng),
+        displayKind: determineDisplayKind(post, currentUserId),
+      );
+    } catch (e) {
+      // Return default position if error occurs
+      return BubblePosition(
+        post: post,
+        position: const LatLng(
+          35.658871,
+          139.70196,
+        ), // Default to current location
+        displayKind: determineDisplayKind(post, currentUserId),
+      );
+    }
   }
 
   /// 表示種別を決定
