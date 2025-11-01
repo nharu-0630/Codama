@@ -1,5 +1,5 @@
 import 'package:codama/core/api/openapi_factory.dart';
-import 'package:codama/core/providers/auth_provider.dart';
+import 'package:codama/core/providers/auth_state_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:openapi/openapi.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -221,7 +221,9 @@ class ApiService {
           ..lat = lat
           ..lon = lng,
       );
-      _logger.d('投稿リクエスト作成: content=${text.substring(0, text.length > 20 ? 20 : text.length)}...');
+      _logger.d(
+        '投稿リクエスト作成: content=${text.substring(0, text.length > 20 ? 20 : text.length)}...',
+      );
 
       final response = await client.getPostsApi().createPostPostsPost(
         authorization: 'Bearer $accessToken',
@@ -233,7 +235,7 @@ class ApiService {
         throw Exception('投稿の作成に失敗しました: レスポンスデータがありません');
       }
 
-      _logger.i('投稿作成成功: postId=${response.data!.id}');
+      _logger.i('投稿作成成功: postId=${response.data!.post.uuid}');
       return response.data!;
     } catch (e) {
       _logger.e('投稿の作成に失敗しました', e);
@@ -287,4 +289,3 @@ class ApiService {
     }
   }
 }
-

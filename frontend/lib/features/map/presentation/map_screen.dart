@@ -1,6 +1,8 @@
 import 'package:codama/core/constants/config.dart';
-import 'package:codama/core/di/providers.dart';
-import 'package:codama/core/providers/auth_provider.dart';
+import 'package:codama/core/providers/api_service_provider.dart';
+import 'package:codama/core/providers/auth_state_provider.dart';
+import 'package:codama/core/providers/cell_tracking_service_provider.dart';
+import 'package:codama/core/providers/logger_service_provider.dart';
 import 'package:codama/features/auth/widgets/signup_modal.dart';
 import 'package:codama/features/location/services/live_location_controller.dart';
 import 'package:codama/features/location/services/location_service.dart';
@@ -28,9 +30,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   late MapController _mapController;
-  final LocationService _locationService = LocationService();
-  final LiveLocationController _liveLocationController =
-      LiveLocationController();
+  LocationService? _locationService;
+  LiveLocationController? _liveLocationController;
   LatLng? _currentLocation;
   double? _lastZoomLevel;
   bool _isInitialized = false;
@@ -46,6 +47,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _mapController = MapController();
+    _initializeServices();
     _initializeDevTools();
     _startLocationTracking();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -53,9 +55,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
+  void _initializeServices() {
+    final logger = ref.read(loggerServiceProvider);
+    _locationService = LocationService(logger: logger);
+    _liveLocationController = LiveLocationController(logger: logger);
+  }
+
   @override
   void dispose() {
-    _liveLocationController.dispose();
+    _liveLocationController?.dispose();
     super.dispose();
   }
 
@@ -200,7 +208,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _startLocationTracking() async {
-    await _liveLocationController.startTracking(
+    await _liveLocationController?.startTracking(
       onLocationUpdate: (LatLng location) async {
         _currentLocation = location;
         try {
@@ -234,7 +242,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _initializeDevTools() {
     if (DevLocationService.isDevToolsEnabled) {
-      _locationService.setVirtualLocation(_virtualLocation);
+      _locationService?.setVirtualLocation(_virtualLocation);
       setState(() {
         _currentLocation = _virtualLocation;
       });
@@ -246,7 +254,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _virtualLocation = newLocation;
       _currentLocation = newLocation;
     });
-    _locationService.setVirtualLocation(newLocation);
+    _locationService?.setVirtualLocation(newLocation);
     ref
         .read(cellTrackingServiceProvider.future)
         .then((cellTrackingService) {
