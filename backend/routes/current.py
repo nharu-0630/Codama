@@ -15,6 +15,9 @@ async def get_current(lat: float, lon: float):
     cell_repo: CellRepositoryInterface = container.resolve(CellRepositoryInterface)
     area_repo: AreaRepositoryInterface = container.resolve(AreaRepositoryInterface)
 
+    # CellRepositoryにAreaRepositoryを設定
+    cell_repo.set_area_repository(area_repo)
+
     # 座標からセルを取得または作成
     cell = cell_repo.get_or_create_cell(lat, lon)
     if not cell:

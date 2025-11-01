@@ -3,10 +3,16 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from domain.entities import Cell
+    from interfaces.area_repository import AreaRepositoryInterface
 
 
 class CellRepositoryInterface(ABC):
     """Cellリポジトリの抽象化インタフェース"""
+
+    @abstractmethod
+    def set_area_repository(self, area_repo: "AreaRepositoryInterface"):
+        """Areaリポジトリを設定"""
+        pass
 
     @abstractmethod
     def get_cell_by_id(self, cell_id: int) -> "Cell | None":
