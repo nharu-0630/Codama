@@ -20,7 +20,7 @@ class _SignupModalState extends ConsumerState<SignupModal> {
   Widget build(BuildContext context) {
     return Dialog(
       child: Container(
-        padding: const EdgeInsets.all(Config.spacingXXLarge),
+        padding: const EdgeInsets.all(Config.spacingXLarge),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -44,15 +44,17 @@ class _SignupModalState extends ConsumerState<SignupModal> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Config.brandOrange,
                   foregroundColor: Config.neutralWhite,
-                  padding: const EdgeInsets.symmetric(vertical: Config.spacingLarge),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: Config.spacingLarge,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 child: _isLoading
                     ? SizedBox(
-                        height: Config.spacingXXLarge,
-                        width: Config.spacingXXLarge,
+                        height: Config.spacingXLarge,
+                        width: Config.spacingXLarge,
                         child: CircularProgressIndicator(
                           color: Config.neutralWhite,
                           strokeWidth: Config.borderWidthThin,

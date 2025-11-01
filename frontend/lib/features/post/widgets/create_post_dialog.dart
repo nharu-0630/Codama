@@ -51,15 +51,21 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
 
     try {
       await widget.onPostCreate(text);
-      Navigator.of(context).pop();
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('投稿に失敗しました: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('投稿に失敗しました: $e')));
+      }
     } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
@@ -69,7 +75,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
       backgroundColor: Config.customLightBrown,
       title: Text(
         'あなたの心の声を聞かせて',
-        style: const TextStyle(fontSize: Config.fontSizeLarge),
+        style: Theme.of(context).textTheme.titleMedium,
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -95,8 +101,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
             alignment: Alignment.centerRight,
             child: Text(
               '${_textController.text.length}/${Config.maxPostLength}',
-              style: TextStyle(
-                fontSize: Config.fontSizeSmall,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: _textController.text.length > Config.maxPostLength
                     ? Config.neutralRed
                     : Config.neutralGrey,

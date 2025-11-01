@@ -152,25 +152,16 @@ class Config {
   static const double spacingSmall = 8.0;
   static const double spacingMedium = 12.0;
   static const double spacingLarge = 16.0;
-  static const double spacingXLarge = 20.0;
-  static const double spacingXXLarge = 24.0;
-
-  /// フォントサイズ
-  static const double fontSizeSmall = 12.0;
-  static const double fontSizeMedium = 14.0;
-  static const double fontSizeLarge = 16.0;
+  static const double spacingXLarge = 24.0;
 
   /// アイコンサイズ
   static const double iconSizeSmall = 16.0;
   static const double iconSizeMedium = 20.0;
-  static const double iconSizeLarge = 40.0;
 
   /// サイズ制約
-  static const double bubbleMinWidth = 60.0;
-  static const double bubbleMaxWidth = 200.0;
-  static const double joystickSize = 100.0;
-  static const double joystickKnobSize = 40.0;
-  static const double joystickIconSize = 20.0;
+  static const double joystickSize = 96.0;
+  static const double joystickKnobSize = 36.0;
+  static const double joystickIconSize = 18.0;
 
   /// 境界線とボーダー設定
   static const double borderWidthThin = 2.0;
@@ -179,6 +170,8 @@ class Config {
   static const double borderRadiusMedium = 12.0;
 
   /// バブル（投稿）関連
+  static const double bubbleMinWidth = 60.0;
+  static const double bubbleMaxWidth = 200.0;
   static const double bubbleTailWidth = 16.0;
   static const double bubbleTailHeight = 6.0;
   static const double bubbleBlurRadius = 3.0;

@@ -70,7 +70,7 @@ class BubbleWidget extends StatelessWidget {
               Config.spacingMedium,
               Config.spacingTiny,
               Config.spacingMedium,
-              6.0,
+              Config.spacingTiny,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -91,7 +91,9 @@ class BubbleWidget extends StatelessWidget {
                           post.content,
                           style: TextStyle(
                             color: textColor,
-                            fontSize: Config.fontSizeMedium,
+                            fontSize: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.fontSize,
                             fontWeight:
                                 displayKind == BubbleDisplayKind.landReply
                                 ? FontWeight.w400
@@ -110,7 +112,9 @@ class BubbleWidget extends StatelessWidget {
                               post.content,
                               style: TextStyle(
                                 color: textColor,
-                                fontSize: Config.fontSizeMedium,
+                                fontSize: Theme.of(
+                                  context,
+                                ).textTheme.bodyMedium?.fontSize,
                                 fontWeight:
                                     displayKind == BubbleDisplayKind.landReply
                                     ? FontWeight.w400
