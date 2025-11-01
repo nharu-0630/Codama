@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import 'package:openapi/openapi.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -36,35 +36,44 @@ class ApiService {
     _client = null;
   }
 
-  // Auth methods
-  Future<SignupResponse> signUp() async {
+  Future<T> _makeApiCall<T>(
+    Future<Response<T>> Function() apiCall,
+    String operation, {
+    bool requiresAuth = false,
+  }) async {
     try {
-      final response = await client.getAuthApi().signupSignupPost();
-
-      if (response.data == null) {
-        throw Exception('Failed to sign up: No response data');
+      if (requiresAuth && !isAuthenticated()) {
+        throw Exception('User not authenticated');
       }
 
-      final signupResponse = response.data!;
+      final response = await apiCall();
 
-      // Save tokens
-      await _sharedPreferences.setString(
-        'access_token',
-        signupResponse.accessToken,
-      );
-      await _sharedPreferences.setString(
-        'refresh_token',
-        signupResponse.refreshToken,
-      );
-      await _sharedPreferences.setString('user_id', signupResponse.userId);
+      if (response.data == null) {
+        throw Exception('Failed $operation: No response data');
+      }
 
-      _invalidateClient();
-
-      return signupResponse;
+      return response.data!;
     } catch (e) {
-      _logger.e('Failed to sign up: $e');
+      _logger.e('Failed $operation: $e');
       rethrow;
     }
+  }
+
+  // Auth methods
+  Future<SignupResponse> signUp() async {
+    final response = await _makeApiCall(
+      () => client.getAuthApi().signupSignupPost(),
+      'to sign up',
+    );
+
+    // Save tokens
+    await _sharedPreferences.setString('access_token', response.accessToken);
+    await _sharedPreferences.setString('refresh_token', response.refreshToken);
+    await _sharedPreferences.setString('user_id', response.userId);
+
+    _invalidateClient();
+
+    return response;
   }
 
   Future<void> signOut() async {
@@ -106,19 +115,12 @@ class ApiService {
   // Location methods
   Future<CurrentResponse?> getCurrentLocation(double lat, double lon) async {
     try {
-      final response = await client.getCurrentApi().getCurrentCurrentGet(
-        lat: lat,
-        lon: lon,
+      return await _makeApiCall(
+        () => client.getCurrentApi().getCurrentCurrentGet(lat: lat, lon: lon),
+        'to get current location for ($lat, $lon)',
       );
-
-      if (response.data == null) {
-        _logger.w('No location data received for coordinates: ($lat, $lon)');
-        return null;
-      }
-
-      return response.data!;
     } catch (e) {
-      _logger.e('Failed to get current location for ($lat, $lon): $e');
+      _logger.w('No location data received for coordinates: ($lat, $lon)');
       return null;
     }
   }
@@ -129,83 +131,32 @@ class ApiService {
     required double lng,
     required String text,
   }) async {
-    try {
-      if (!isAuthenticated()) {
-        throw Exception('User not authenticated');
-      }
-      
-      final request = CreatePostRequest(
-        (b) => b
-          ..content = text
-          ..lat = lat
-          ..lon = lng,
-      );
+    final request = CreatePostRequest(
+      (b) => b
+        ..content = text
+        ..lat = lat
+        ..lon = lng,
+    );
 
-      final response = await client.getPostsApi().createPostPostsPost(
+    return await _makeApiCall(
+      () => client.getPostsApi().createPostPostsPost(
         authorization: 'Bearer $accessToken',
         createPostRequest: request,
-      );
-
-      if (response.data == null) {
-        throw Exception('Failed to create post: No response data');
-      }
-
-      return response.data!;
-    } catch (e) {
-      _logger.e('Failed to create post: $e');
-      rethrow;
-    }
+      ),
+      'to create post',
+      requiresAuth: true,
+    );
   }
 
   Future<PostsResponse> getPostsByLocation(double lat, double lon) async {
-    try {
-      if (!isAuthenticated()) {
-        throw Exception('User not authenticated');
-      }
-      
-      final response = await client.getPostsApi().getPostsPostsGet(
+    return await _makeApiCall(
+      () => client.getPostsApi().getPostsPostsGet(
         authorization: 'Bearer $accessToken',
         lat: lat,
         lon: lon,
-      );
-
-      if (response.data == null) {
-        _logger.w('No posts data received for coordinates: ($lat, $lon)');
-        throw Exception('No posts data received');
-      }
-
-      return response.data!;
-    } catch (e) {
-      _logger.e('Failed to get posts for location ($lat, $lon): $e');
-      rethrow;
-    }
+      ),
+      'to get posts for location ($lat, $lon)',
+      requiresAuth: true,
+    );
   }
 }
-
-// Provider
-final apiServiceProvider = Provider<ApiService>((ref) {
-  final openApiFactory = ref.read(openApiFactoryProvider);
-  final sharedPreferences = ref.read(sharedPreferencesProvider).value!;
-  final logger = ref.read(loggerServiceProvider);
-
-  return ApiService(
-    openApiFactory: openApiFactory,
-    sharedPreferences: sharedPreferences,
-    logger: logger,
-    baseUrl: 'http://localhost:8000',
-  );
-});
-
-final openApiFactoryProvider = Provider<OpenApiFactory>((ref) {
-  return OpenApiFactory();
-});
-
-final sharedPreferencesProvider = FutureProvider<SharedPreferences>((
-  ref,
-) async {
-  return await SharedPreferences.getInstance();
-});
-
-final loggerServiceProvider = Provider<LoggerService>((ref) {
-  return LoggerService();
-});

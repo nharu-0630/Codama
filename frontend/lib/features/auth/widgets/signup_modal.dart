@@ -1,4 +1,4 @@
-import 'package:codama/core/services/api_service.dart';
+import 'package:codama/core/di/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

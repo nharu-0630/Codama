@@ -1,6 +1,5 @@
 import 'package:codama/core/constants/config.dart';
 import 'package:codama/core/di/providers.dart';
-import 'package:codama/core/services/api_service.dart';
 import 'package:codama/features/auth/widgets/signup_modal.dart';
 import 'package:codama/features/location/services/live_location_controller.dart';
 import 'package:codama/features/location/services/location_service.dart';
@@ -18,9 +17,6 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:icon_decoration/icon_decoration.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:openapi/openapi.dart';
-
-const _styleUrl =
-    "https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg";
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -301,7 +297,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: "$_styleUrl?api_key={api_key}",
+                urlTemplate: "${Config.styleUrl}?api_key={api_key}",
                 additionalOptions: {"api_key": apiKey},
                 maxZoom: 20,
               ),
