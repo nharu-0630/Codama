@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import '../../../domain/entities/post.dart';
+import 'package:openapi/openapi.dart';
 
 /// 一時投稿（5秒で消える投稿）を保持するクラス
 class TemporaryPost {
-  final Post post;
+  final APIPostOutput post;
   final DateTime displayStartTime;
 
   TemporaryPost({required this.post, required this.displayStartTime});
@@ -41,11 +41,11 @@ class TemporaryPostManager {
   }
 
   /// 一時投稿を追加
-  void addTemporaryPosts(List<Post> newPosts, void Function() onChanged) {
-    final existingIds = _temporaryPosts.map((temp) => temp.post.id).toSet();
+  void addTemporaryPosts(List<APIPostOutput> newPosts, void Function() onChanged) {
+    final existingIds = _temporaryPosts.map((temp) => temp.post.uuid).toSet();
     final now = DateTime.now();
     final newTemporaryPosts = newPosts
-        .where((post) => !existingIds.contains(post.id))
+        .where((post) => !existingIds.contains(post.uuid))
         .map((post) => TemporaryPost(post: post, displayStartTime: now));
     if (newTemporaryPosts.isNotEmpty) {
       _temporaryPosts.addAll(newTemporaryPosts);
@@ -54,7 +54,7 @@ class TemporaryPostManager {
   }
 
   /// すべての一時投稿を取得
-  List<Post> getTemporaryPosts() {
+  List<APIPostOutput> getTemporaryPosts() {
     return _temporaryPosts.map((temp) => temp.post).toList();
   }
 

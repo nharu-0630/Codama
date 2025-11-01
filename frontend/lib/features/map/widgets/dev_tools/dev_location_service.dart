@@ -1,8 +1,6 @@
+import 'package:codama/core/constants/config.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:latlong2/latlong.dart';
-
-import '../../../../core/constants/location_config.dart';
 
 class DevLocationService {
   static final DevLocationService _instance = DevLocationService._internal();
@@ -12,10 +10,7 @@ class DevLocationService {
   LatLng? _virtualLocation;
 
   static bool get isDevToolsEnabled {
-    if (!kDebugMode) return false;
-
-    final devToolsValue = dotenv.env['DEV_TOOLS']?.toLowerCase();
-    return devToolsValue != 'false';
+    return kDebugMode;
   }
 
   void setVirtualLocation(LatLng location) {
@@ -54,7 +49,7 @@ class DevLocationService {
       return;
     }
 
-    setVirtualLocation(LocationConfig.defaultLocation);
+    setVirtualLocation(Config.defaultLocation);
   }
 
   /// 仮想位置を微調整

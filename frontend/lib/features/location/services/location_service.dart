@@ -1,8 +1,7 @@
+import 'package:codama/core/constants/config.dart';
+import 'package:codama/features/map/widgets/dev_tools/dev_location_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-
-import '../../../core/constants/location_config.dart';
-import '../../map/widgets/dev_tools/dev_location_service.dart';
 
 class LocationService {
   final DevLocationService _devLocationService = DevLocationService();
@@ -18,21 +17,21 @@ class LocationService {
     try {
       // 位置サービスと権限をチェック
       if (!await _checkLocationServiceEnabled()) {
-        return LocationConfig.defaultLocation;
+        return Config.defaultLocation;
       }
 
       if (!await _checkAndRequestPermission()) {
-        return LocationConfig.defaultLocation;
+        return Config.defaultLocation;
       }
 
       // 位置情報を取得
       final Position position = await Geolocator.getCurrentPosition(
-        locationSettings: LocationConfig.locationSettings,
+        locationSettings: Config.locationSettings,
       );
 
       return LatLng(position.latitude, position.longitude);
     } catch (e) {
-      return LocationConfig.defaultLocation;
+      return Config.defaultLocation;
     }
   }
 
@@ -66,16 +65,15 @@ class LocationService {
       return Stream.periodic(
         const Duration(seconds: 1),
         (_) =>
-            _devLocationService.getVirtualLocation() ??
-            LocationConfig.defaultLocation,
+            _devLocationService.getVirtualLocation() ?? Config.defaultLocation,
       );
     }
 
     return Geolocator.getPositionStream(
-          locationSettings: LocationConfig.locationSettings,
+          locationSettings: Config.locationSettings,
         )
         .map((position) => LatLng(position.latitude, position.longitude))
-        .handleError((error, stackTrace) => LocationConfig.defaultLocation);
+        .handleError((error, stackTrace) => Config.defaultLocation);
   }
 
   /// 権限状態をチェック

@@ -1,7 +1,6 @@
+import 'package:codama/core/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/di/providers.dart';
 
 class SignupModal extends ConsumerStatefulWidget {
   final VoidCallback onSuccess;
@@ -124,18 +123,12 @@ class _SignupModalState extends ConsumerState<SignupModal> {
     });
 
     try {
-      final authUseCase = ref.read(authUseCaseProvider);
-      await authUseCase.signUp();
+      final apiService = ref.read(apiServiceProvider);
+      await apiService.signUp();
 
-      if (true) {
-        widget.onSuccess();
-        if (mounted) {
-          Navigator.of(context).pop();
-        }
-      } else {
-        setState(() {
-          _errorMessage = 'サインアップに失敗しました。もう一度お試しください。';
-        });
+      widget.onSuccess();
+      if (mounted) {
+        Navigator.of(context).pop();
       }
     } catch (e) {
       setState(() {

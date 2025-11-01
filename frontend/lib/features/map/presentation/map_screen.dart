@@ -1,3 +1,15 @@
+import 'package:codama/core/constants/config.dart';
+import 'package:codama/core/di/providers.dart';
+import 'package:codama/core/services/api_service.dart';
+import 'package:codama/features/auth/widgets/signup_modal.dart';
+import 'package:codama/features/location/services/live_location_controller.dart';
+import 'package:codama/features/location/services/location_service.dart';
+import 'package:codama/features/map/widgets/bubble_position.dart';
+import 'package:codama/features/map/widgets/dev_tools/dev_joystick.dart';
+import 'package:codama/features/map/widgets/dev_tools/dev_location_service.dart';
+import 'package:codama/features/post/services/bubble_manager.dart';
+import 'package:codama/features/post/widgets/bubble_widget.dart';
+import 'package:codama/features/post/widgets/create_post_dialog.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -5,19 +17,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:icon_decoration/icon_decoration.dart';
 import 'package:latlong2/latlong.dart';
-
-import '../../../core/constants/location_config.dart';
-import '../../../core/di/providers.dart';
-import '../../auth/widgets/signup_modal.dart';
-import '../../location/services/live_location_controller.dart';
-import '../../location/services/location_service.dart';
-import '../../post/models/bubble_position.dart';
-import '../../../domain/entities/post.dart' as domain;
-import '../../post/services/bubble_manager.dart';
-import '../../post/widgets/bubble_widget.dart';
-import '../../post/widgets/create_post_dialog.dart';
-import '../widgets/dev_tools/dev_joystick.dart';
-import '../widgets/dev_tools/dev_location_service.dart';
+import 'package:openapi/openapi.dart';
 
 const _styleUrl =
     "https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg";
@@ -38,10 +38,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _currentAreaName;
   double? _lastZoomLevel;
 
-  LatLng _virtualLocation = LocationConfig.defaultLocation;
+  LatLng _virtualLocation = Config.defaultLocation;
 
   final BubbleManager _bubbleManager = BubbleManager();
-  List<domain.Post> _posts = [];
+  List<APIPostOutput> _posts = [];
   List<BubblePosition> _bubblePositions = [];
 
   static const double _circleRadiusMeters = 150.0;
@@ -72,8 +72,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _checkAuthenticationAndInitialize() async {
     try {
-      final authUseCase = ref.read(authUseCaseProvider);
-      final isAuthenticated = await authUseCase.isAuthenticated();
+      final apiService = ref.read(apiServiceProvider);
+      final isAuthenticated = apiService.isAuthenticated();
       if (!isAuthenticated) {
         _showSignupModal();
         return;
@@ -153,12 +153,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         east: camera.visibleBounds.east,
         west: camera.visibleBounds.west,
       );
-      final authUseCase = ref.read(authUseCaseProvider);
-      final currentUser = await authUseCase.getCurrentUser();
+      final apiService = ref.read(apiServiceProvider);
+      final currentUser = apiService.getCurrentUser();
       final bubblePositions = _bubbleManager.layoutBubbles(
         _posts,
         bounds,
-        currentUser.id,
+        currentUser?.userId ?? '',
       );
       setState(() {
         _bubblePositions = bubblePositions;
@@ -169,8 +169,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  void _showPostDetail(domain.Post post) {
-    final isLandMemory = post.kind == domain.PostKind.land;
+  void _showPostDetail(APIPostOutput post) {
+    final isLandMemory = post.userUuid == null;
 
     showDialog(
       context: context,
@@ -198,7 +198,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
           children: [
             Text(
-              post.text,
+              post.content,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: isLandMemory
                     ? Colors.purple.shade800
@@ -242,13 +242,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       targetLocation = _currentLocation;
     }
     if (targetLocation != null) {
-      _mapController.move(targetLocation, LocationConfig.compassZoom);
+      _mapController.move(targetLocation, Config.compassZoom);
       _mapController.rotate(0);
     } else {
-      _mapController.move(
-        LocationConfig.defaultLocation,
-        LocationConfig.defaultZoom,
-      );
+      _mapController.move(Config.defaultLocation, Config.defaultZoom);
       _mapController.rotate(0);
     }
   }
@@ -296,10 +293,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _currentLocation ?? LocationConfig.defaultLocation,
-              initialZoom: LocationConfig.defaultZoom,
-              maxZoom: LocationConfig.maxZoom,
-              minZoom: LocationConfig.minZoom,
+              initialCenter: _currentLocation ?? Config.defaultLocation,
+              initialZoom: Config.defaultZoom,
+              maxZoom: Config.maxZoom,
+              minZoom: Config.minZoom,
               onPositionChanged: _onPositionChanged,
             ),
             children: [

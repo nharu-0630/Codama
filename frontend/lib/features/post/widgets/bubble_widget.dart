@@ -1,12 +1,11 @@
 import 'dart:ui';
 
+import 'package:codama/features/map/widgets/bubble_position.dart';
 import 'package:flutter/material.dart';
-
-import '../models/bubble_position.dart';
-import '../../../domain/entities/post.dart';
+import 'package:openapi/openapi.dart';
 
 class BubbleWidget extends StatelessWidget {
-  final Post post;
+  final APIPostOutput post;
   final VoidCallback? onTap;
   final BubbleDisplayKind displayKind;
   final bool showContent;
@@ -37,10 +36,8 @@ class BubbleWidget extends StatelessWidget {
       BubbleDisplayKind.userReply => Colors.orange.shade100,
     };
 
-    // 一時投稿の場合は背景色を白っぽくする
-    final bubbleColor = post.isTemporary
-        ? Colors.white.withValues(alpha: 0.95)
-        : baseBubbleColor;
+    // Use base bubble color (isTemporary not available in APIPostOutput)
+    final bubbleColor = baseBubbleColor;
 
     final borderColor = switch (displayKind) {
       BubbleDisplayKind.me => Colors.blue.shade400,
@@ -83,7 +80,7 @@ class BubbleWidget extends StatelessWidget {
                 Flexible(
                   child: showContent
                       ? Text(
-                          post.text,
+                          post.content,
                           style: TextStyle(
                             color: textColor,
                             fontSize: 14,
@@ -102,7 +99,7 @@ class BubbleWidget extends StatelessWidget {
                       : Stack(
                           children: [
                             Text(
-                              post.text,
+                              post.content,
                               style: TextStyle(
                                 color: textColor,
                                 fontSize: 14,

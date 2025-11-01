@@ -1,11 +1,10 @@
 import 'dart:async';
 
+import 'package:codama/core/constants/config.dart';
+import 'package:codama/features/map/widgets/dev_tools/dev_location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-
-import '../../../core/constants/location_config.dart';
-import '../../map/widgets/dev_tools/dev_location_service.dart';
 
 /// 常時位置情報取得を管理するコントローラー
 /// アプリのライフサイクルに応じて位置情報の取得を制御し、バッテリー効率を最適化
@@ -101,9 +100,7 @@ class LiveLocationController with WidgetsBindingObserver {
   void _startRealLocationStream() {
     _positionSubscription?.cancel();
     _positionSubscription =
-        Geolocator.getPositionStream(
-              locationSettings: LocationConfig.locationSettings,
-            )
+        Geolocator.getPositionStream(locationSettings: Config.locationSettings)
             .distinct(
               (previous, current) =>
                   previous.latitude == current.latitude &&
@@ -127,7 +124,7 @@ class LiveLocationController with WidgetsBindingObserver {
           const Duration(seconds: 1),
           (_) =>
               _devLocationService.getVirtualLocation() ??
-              LocationConfig.defaultLocation,
+              Config.defaultLocation,
         ).listen(
           (location) {
             _onLocationUpdate?.call(location);
@@ -184,7 +181,7 @@ class LiveLocationController with WidgetsBindingObserver {
   bool get isTracking => _isTracking;
 
   /// デフォルト位置（横浜駅）を取得
-  LatLng get defaultLocation => LocationConfig.defaultLocation;
+  LatLng get defaultLocation => Config.defaultLocation;
 
   /// リソースのクリーンアップ
   void dispose() {

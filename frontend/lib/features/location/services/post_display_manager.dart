@@ -1,11 +1,12 @@
 import 'dart:async';
 
-import '../../../domain/entities/post.dart';
+import 'package:openapi/openapi.dart';
+
 
 /// 投稿の表示管理を担当するクラス
 class PostDisplayManager {
-  final List<Post> _displayedPosts = []; // 画面に表示されている投稿
-  final List<Post> _pendingPosts = []; // 表示待ちキュー
+  final List<APIPostOutput> _displayedPosts = []; // 画面に表示されている投稿
+  final List<APIPostOutput> _pendingPosts = []; // 表示待ちキュー
   Timer? _displayTimer;
 
   static const Duration displayInterval = Duration(milliseconds: 500);
@@ -29,13 +30,13 @@ class PostDisplayManager {
   }
 
   /// キューに投稿を追加
-  void addPostsToQueue(List<Post> newPosts) {
+  void addPostsToQueue(List<APIPostOutput> newPosts) {
     final existingIds = {
-      ..._displayedPosts.map((p) => p.id),
-      ..._pendingPosts.map((p) => p.id),
+      ..._displayedPosts.map((p) => p.uuid),
+      ..._pendingPosts.map((p) => p.uuid),
     };
     final uniquePosts = newPosts
-        .where((p) => !existingIds.contains(p.id))
+        .where((p) => !existingIds.contains(p.uuid))
         .toList();
     if (uniquePosts.isNotEmpty) {
       _pendingPosts.addAll(uniquePosts);
@@ -44,12 +45,12 @@ class PostDisplayManager {
 
   /// IDで投稿を削除
   void removePostById(String postId) {
-    _displayedPosts.removeWhere((p) => p.id == postId);
-    _pendingPosts.removeWhere((p) => p.id == postId);
+    _displayedPosts.removeWhere((p) => p.uuid == postId);
+    _pendingPosts.removeWhere((p) => p.uuid == postId);
   }
 
   /// 表示中の投稿を取得
-  List<Post> getDisplayedPosts() {
+  List<APIPostOutput> getDisplayedPosts() {
     return List.unmodifiable(_displayedPosts);
   }
 

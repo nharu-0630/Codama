@@ -1,7 +1,6 @@
+import 'package:codama/features/map/widgets/bubble_position.dart';
 import 'package:latlong2/latlong.dart';
-
-import '../models/bubble_position.dart';
-import '../../../domain/entities/post.dart';
+import 'package:openapi/openapi.dart';
 
 class ViewBounds {
   final double north;
@@ -21,13 +20,13 @@ class BubbleManager {
   static const int maxBubbleCount = 15;
 
   /// 投稿と返信を展開してフラット化
-  List<Post> _flattenPosts(List<Post> posts) {
-    final flattened = <Post>[];
+  List<APIPostOutput> _flattenPosts(List<APIPostOutput> posts) {
+    final flattened = <APIPostOutput>[];
     for (final post in posts) {
       flattened.add(post);
       // 返信を展開
-      if (post.replies.isNotEmpty) {
-        flattened.addAll(_flattenPosts(post.replies));
+      if (post.replies != null && post.replies!.isNotEmpty) {
+        flattened.addAll(_flattenPosts(post.replies!.toList()));
       }
     }
     return flattened;
@@ -35,7 +34,7 @@ class BubbleManager {
 
   /// 画面内の吹き出しを配置
   List<BubblePosition> layoutBubbles(
-    List<Post> posts,
+    List<APIPostOutput> posts,
     ViewBounds viewBounds,
     String? currentUserId,
   ) {
@@ -55,42 +54,63 @@ class BubbleManager {
         .toList();
   }
 
-  bool _isInViewBounds(Post post, ViewBounds viewBounds) {
-    return post.lat >= viewBounds.south &&
-        post.lat <= viewBounds.north &&
-        post.lng >= viewBounds.west &&
-        post.lng <= viewBounds.east;
+  bool _isInViewBounds(APIPostOutput post, ViewBounds viewBounds) {
+    // Extract lat/lon from location array [lat, lon]
+    final location = post.location;
+    final lat = location.isNotEmpty
+        ? (location[0] as num?)?.toDouble() ?? 0.0
+        : 0.0;
+    final lng = location.length > 1
+        ? (location[1] as num?)?.toDouble() ?? 0.0
+        : 0.0;
+
+    return lat >= viewBounds.south &&
+        lat <= viewBounds.north &&
+        lng >= viewBounds.west &&
+        lng <= viewBounds.east;
   }
 
-  List<Post> _limitRegularPosts(List<Post> visiblePosts) {
-    final regularPosts = visiblePosts.where((p) => !p.isTemporary).toList();
-    final temporaryPosts = visiblePosts.where((p) => p.isTemporary).toList();
+  List<APIPostOutput> _limitRegularPosts(List<APIPostOutput> visiblePosts) {
+    // Note: isTemporary is not available in APIPostOutput, treat all posts as regular for now
+    final limitedRegularPosts = visiblePosts.length > maxBubbleCount
+        ? visiblePosts.take(maxBubbleCount).toList()
+        : visiblePosts;
 
-    final limitedRegularPosts = regularPosts.length > maxBubbleCount
-        ? regularPosts.take(maxBubbleCount).toList()
-        : regularPosts;
-
-    return [...limitedRegularPosts, ...temporaryPosts];
+    return limitedRegularPosts;
   }
 
-  BubblePosition _createBubblePosition(Post post, String? currentUserId) {
+  BubblePosition _createBubblePosition(
+    APIPostOutput post,
+    String? currentUserId,
+  ) {
+    // Extract lat/lon from location array [lat, lon]
+    final location = post.location;
+    final lat = location.isNotEmpty
+        ? (location[0] as num?)?.toDouble() ?? 0.0
+        : 0.0;
+    final lng = location.length > 1
+        ? (location[1] as num?)?.toDouble() ?? 0.0
+        : 0.0;
+
     return BubblePosition(
       post: post,
-      position: LatLng(post.lat, post.lng),
-      isVisible: true,
+      position: LatLng(lat, lng),
       displayKind: determineDisplayKind(post, currentUserId),
     );
   }
 
   /// 表示種別を決定
-  BubbleDisplayKind determineDisplayKind(Post post, String? currentUserId) {
-    // land kind の場合は土地の記憶として扱う
-    if (post.kind == PostKind.land) {
+  BubbleDisplayKind determineDisplayKind(
+    APIPostOutput post,
+    String? currentUserId,
+  ) {
+    // Land memory posts have null userUuid
+    if (post.userUuid == null) {
       return BubbleDisplayKind.landReply;
     }
 
     // 親投稿の場合
-    return post.userId == currentUserId
+    return post.userUuid == currentUserId
         ? BubbleDisplayKind.me
         : BubbleDisplayKind.other;
   }

@@ -1,35 +1,28 @@
 import 'dart:async';
 
+import 'package:built_collection/built_collection.dart';
+import 'package:built_value/json_object.dart';
+import 'package:codama/core/services/api_service.dart';
 import 'package:latlong2/latlong.dart';
-import '../../../domain/entities/location_data.dart';
-import '../../../domain/entities/post.dart' as domain;
-import '../../../domain/usecases/auth/auth_use_case.dart';
-import '../../../domain/usecases/location/location_use_case.dart';
-import '../../../domain/usecases/post/post_use_case.dart';
+import 'package:openapi/openapi.dart';
+
 import 'post_display_manager.dart';
 import 'temporary_post_manager.dart';
 
 class CellTrackingService {
-  final AuthUseCase _authUseCase;
-  final LocationUseCase _locationUseCase;
-  final PostUseCase _postUseCase;
+  final ApiService _apiService;
   final PostDisplayManager _displayManager = PostDisplayManager();
   final TemporaryPostManager _temporaryManager = TemporaryPostManager();
 
-  CellTrackingService({
-    required AuthUseCase authUseCase,
-    required LocationUseCase locationUseCase,
-    required PostUseCase postUseCase,
-  }) : _authUseCase = authUseCase,
-       _locationUseCase = locationUseCase,
-       _postUseCase = postUseCase;
+  CellTrackingService({required ApiService apiService})
+    : _apiService = apiService;
 
-  Cell? _currentCell;
+  APICell? _currentCell;
   String? _currentAreaName;
-  StreamController<List<domain.Post>>? _postsController;
+  StreamController<List<APIPostOutput>>? _postsController;
   StreamController<String?>? _areaNameController;
 
-  Stream<List<domain.Post>>? get postsStream => _postsController?.stream;
+  Stream<List<APIPostOutput>>? get postsStream => _postsController?.stream;
   Stream<String?>? get areaNameStream => _areaNameController?.stream;
   String? get currentAreaName => _currentAreaName;
 
@@ -39,12 +32,12 @@ class CellTrackingService {
   static const int _prioritySimilarPostReplies = 3; // 類似投稿の返信
 
   Future<void> initialize() async {
-    final isAuthenticated = await _authUseCase.isAuthenticated();
+    final isAuthenticated = _apiService.isAuthenticated();
     if (!isAuthenticated) {
-      await _authUseCase.signUp();
+      await _apiService.signUp();
     }
 
-    _postsController = StreamController<List<domain.Post>>.broadcast();
+    _postsController = StreamController<List<APIPostOutput>>.broadcast();
     _areaNameController = StreamController<String?>.broadcast();
     _displayManager.start(_broadcastAllPosts);
     _temporaryManager.start(_broadcastAllPosts);
@@ -60,7 +53,7 @@ class CellTrackingService {
 
   Future<void> onLocationChanged(LatLng loc) async {
     try {
-      final current = await _locationUseCase.getCurrentLocation(
+      final current = await _apiService.getCurrentLocation(
         loc.latitude,
         loc.longitude,
       );
@@ -74,77 +67,82 @@ class CellTrackingService {
         _areaNameController?.add(_currentAreaName);
       }
 
-      if (_currentCell == null || _currentCell != current.cell) {
+      if (_currentCell == null ||
+          !_areCellsEqual(_currentCell!, current.cell)) {
         _currentCell = current.cell;
-        final domainPosts = await _postUseCase.getPostsByLocation(
+        final postsResponse = await _apiService.getPostsByLocation(
           loc.latitude,
           loc.longitude,
         );
-        _addPostsToQueue(domainPosts);
+        _addPostsToQueue(postsResponse.posts.toList());
       }
     } catch (e) {
       // 位置情報の取得に失敗した場合は何もしない
     }
   }
 
-  void _addPostsToQueue(List<domain.Post> newPosts) {
+  bool _areCellsEqual(APICell cell1, APICell cell2) {
+    return cell1.id == cell2.id && cell1.geoHash == cell2.geoHash;
+  }
+
+  void _addPostsToQueue(List<APIPostOutput> newPosts) {
     _displayManager.addPostsToQueue(newPosts);
   }
 
-  void _addTemporaryPosts(List<domain.Post> newPosts) {
+  void _addTemporaryPosts(List<APIPostOutput> newPosts) {
     _temporaryManager.addTemporaryPosts(newPosts, _broadcastAllPosts);
   }
 
   Future<void> createPost({required LatLng loc, required String text}) async {
-    final currentUser = await _authUseCase.getCurrentUser();
-    final optimisticPost = domain.Post.fromApiResponse({
-      'id': 'local_${DateTime.now().millisecondsSinceEpoch}',
-      'lat': loc.latitude,
-      'lng': loc.longitude,
-      'kind': 'user',
-      'text': text,
-      'created_at': DateTime.now().toIso8601String(),
-      'user_id': currentUser.id,
-      'is_temporary': false,
-      'replies': [],
-    });
+    final currentUser = _apiService.getCurrentUser();
+    if (currentUser == null) return;
+
+    // Create optimistic post using APIPostOutput structure
+    final optimisticPostId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+    final optimisticPost = APIPostOutput(
+      (b) => b
+        ..uuid = optimisticPostId
+        ..content = text
+        ..createdAt = DateTime.now()
+        ..location.addAll([JsonObject(loc.latitude), JsonObject(loc.longitude)])
+        ..userUuid = currentUser.userId
+        ..replies = ListBuilder<APIPostOutput>(),
+    );
+
     _displayManager.addPostsToQueue([optimisticPost]);
     try {
-      final result = await _postUseCase.createPost(
+      final response = await _apiService.createPost(
         lat: loc.latitude,
         lng: loc.longitude,
         text: text,
       );
-      final domainPost = result['post'] as domain.Post;
-      final domainSimilarPosts = result['similar_posts'] as List<domain.Post>;
-      
-      final responsePosts = await _flattenResponsePosts(domainPost, domainSimilarPosts);
+
+      final responsePosts = await _flattenResponsePosts(
+        response.post,
+        response.similarPosts.toList(),
+      );
       _addTemporaryPosts(responsePosts);
-      _addPostsToQueue([domainPost]);
+      _addPostsToQueue([response.post]);
     } catch (e) {
       // 投稿作成に失敗した場合は何もしない
     } finally {
-      _displayManager.removePostById(optimisticPost.id);
+      _displayManager.removePostById(optimisticPostId);
       _broadcastAllPosts();
     }
   }
 
   /// レスポンスから投稿を優先度順に展開
   /// 優先度: 1.作成投稿の返信 2.類似投稿 3.類似投稿の返信（各優先度内では古い順）
-  Future<List<domain.Post>> _flattenResponsePosts(domain.Post createdPost, List<domain.Post> similarPosts) async {
+  Future<List<APIPostOutput>> _flattenResponsePosts(
+    APIPostOutput createdPost,
+    List<APIPostOutput> similarPosts,
+  ) async {
     final postsWithPriority = <_PostWithPriority>[];
-
-    // 作成された投稿（一時投稿として5秒で消える）
-    final currentUser = await _authUseCase.getCurrentUser();
-    final temporaryCreatedPost = _makeTemporaryPost(
-      createdPost,
-      userId: currentUser.id,
-    );
 
     // 1. 作成された投稿への返信を追加
     _addRepliesToList(
       postsWithPriority,
-      temporaryCreatedPost.replies,
+      createdPost.replies?.toList() ?? [],
       _priorityCreatedPostReplies,
     );
 
@@ -152,7 +150,7 @@ class CellTrackingService {
     for (final similarPost in similarPosts) {
       postsWithPriority.add(
         _PostWithPriority(
-          post: _makeTemporaryPost(similarPost),
+          post: similarPost,
           priority: _prioritySimilarPosts,
           sortKey: similarPost.createdAt,
         ),
@@ -160,7 +158,7 @@ class CellTrackingService {
 
       _addRepliesToList(
         postsWithPriority,
-        similarPost.replies,
+        similarPost.replies?.toList() ?? [],
         _prioritySimilarPostReplies,
       );
     }
@@ -168,19 +166,15 @@ class CellTrackingService {
     return _sortByPriority(postsWithPriority);
   }
 
-  domain.Post _makeTemporaryPost(domain.Post post, {String? userId}) {
-    return post.copyWith(userId: userId ?? post.userId, isTemporary: true);
-  }
-
   void _addRepliesToList(
     List<_PostWithPriority> list,
-    List<domain.Post> replies,
+    List<APIPostOutput> replies,
     int priority,
   ) {
     for (final reply in replies) {
       list.add(
         _PostWithPriority(
-          post: reply.copyWith(kind: domain.PostKind.land, isTemporary: true),
+          post: reply,
           priority: priority,
           sortKey: reply.createdAt,
         ),
@@ -188,7 +182,9 @@ class CellTrackingService {
     }
   }
 
-  List<domain.Post> _sortByPriority(List<_PostWithPriority> postsWithPriority) {
+  List<APIPostOutput> _sortByPriority(
+    List<_PostWithPriority> postsWithPriority,
+  ) {
     postsWithPriority.sort((a, b) {
       final priorityCompare = a.priority.compareTo(b.priority);
       if (priorityCompare != 0) return priorityCompare;
@@ -196,7 +192,6 @@ class CellTrackingService {
     });
     return postsWithPriority.map((p) => p.post).toList();
   }
-
 
   void dispose() {
     _displayManager.dispose();
@@ -207,7 +202,7 @@ class CellTrackingService {
 }
 
 class _PostWithPriority {
-  final domain.Post post;
+  final APIPostOutput post;
   final int priority;
   final DateTime sortKey;
 
