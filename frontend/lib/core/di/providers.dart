@@ -20,9 +20,9 @@ final loggerServiceProvider = Provider<LoggerService>((ref) {
   return LoggerService();
 });
 
-final apiServiceProvider = Provider<ApiService>((ref) {
+final apiServiceProvider = FutureProvider<ApiService>((ref) async {
   final openApiFactory = ref.read(openApiFactoryProvider);
-  final sharedPreferences = ref.read(sharedPreferencesProvider).value!;
+  final sharedPreferences = await ref.read(sharedPreferencesProvider.future);
   final logger = ref.read(loggerServiceProvider);
 
   return ApiService(
@@ -33,8 +33,8 @@ final apiServiceProvider = Provider<ApiService>((ref) {
   );
 });
 
-final cellTrackingServiceProvider = Provider<CellTrackingService>((ref) {
-  final apiService = ref.read(apiServiceProvider);
+final cellTrackingServiceProvider = FutureProvider<CellTrackingService>((ref) async {
+  final apiService = await ref.read(apiServiceProvider.future);
 
   return CellTrackingService(apiService: apiService);
 });

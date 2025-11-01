@@ -123,7 +123,7 @@ class _SignupModalState extends ConsumerState<SignupModal> {
     });
 
     try {
-      final apiService = ref.read(apiServiceProvider);
+      final apiService = await ref.read(apiServiceProvider.future);
       await apiService.signUp();
 
       widget.onSuccess();

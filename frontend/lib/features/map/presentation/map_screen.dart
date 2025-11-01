@@ -31,13 +31,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final LiveLocationController _liveLocationController =
       LiveLocationController();
   LatLng? _currentLocation;
-  String? _currentAreaName;
   double? _lastZoomLevel;
+  bool _isInitialized = false;
 
   LatLng _virtualLocation = Config.defaultLocation;
 
   final BubbleManager _bubbleManager = BubbleManager();
-  List<APIPostOutput> _posts = [];
   List<BubblePosition> _bubblePositions = [];
 
   static const double _circleRadiusMeters = 150.0;
@@ -47,9 +46,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     _mapController = MapController();
     _initializeDevTools();
-
     _startLocationTracking();
-    _checkAuthenticationAndInitialize();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAuthenticationAndInitialize();
+    });
   }
 
   @override
@@ -63,12 +63,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         (position.zoom - _lastZoomLevel!).abs() >= 1.0) {
       _lastZoomLevel = position.zoom;
     }
-    _updateBubblePositions();
   }
 
   Future<void> _checkAuthenticationAndInitialize() async {
+    if (!mounted) return;
+
     try {
-      final apiService = ref.read(apiServiceProvider);
+      final apiService = await ref.read(apiServiceProvider.future);
       final isAuthenticated = apiService.isAuthenticated();
       if (!isAuthenticated) {
         _showSignupModal();
@@ -76,26 +77,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
       await _initializeCellTracking();
     } catch (e) {
-      _showSignupModal();
+      if (mounted) {
+        _showSignupModal();
+      }
     }
   }
 
   Future<void> _initializeCellTracking() async {
-    final cellTrackingService = ref.read(cellTrackingServiceProvider);
+    if (!mounted) return;
+
     try {
+      final cellTrackingService = await ref.read(
+        cellTrackingServiceProvider.future,
+      );
       await cellTrackingService.initialize();
-      cellTrackingService.postsStream?.listen((posts) {
+      if (mounted) {
         setState(() {
-          _posts = posts;
+          _isInitialized = true;
         });
-        _updateBubblePositions();
-      });
-      cellTrackingService.areaNameStream?.listen((areaName) {
-        setState(() {
-          _currentAreaName = areaName;
-        });
-      });
-    } catch (e) {}
+      }
+    } catch (e) {
+      // Cell tracking initialization failed, but we continue without it
+    }
   }
 
   void _showSignupModal() {
@@ -124,8 +127,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _createPost(String text) async {
     final loc = _shouldShowDevTools ? _virtualLocation : _currentLocation;
     if (loc != null) {
-      final cellTrackingService = ref.read(cellTrackingServiceProvider);
-      cellTrackingService.createPost(loc: loc, text: text);
+      try {
+        final cellTrackingService = await ref.read(
+          cellTrackingServiceProvider.future,
+        );
+        cellTrackingService.createPost(loc: loc, text: text);
+      } catch (e) {
+        // Handle error silently
+      }
     }
   }
 
@@ -135,34 +144,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     const distance = Distance();
     final distanceMeters = distance.as(LengthUnit.Meter, loc, position);
     return distanceMeters <= _circleRadiusMeters;
-  }
-
-  void _updateBubblePositions() async {
-    if (_posts.isEmpty) {
-      return;
-    }
-    try {
-      final camera = _mapController.camera;
-      final bounds = ViewBounds(
-        north: camera.visibleBounds.north,
-        south: camera.visibleBounds.south,
-        east: camera.visibleBounds.east,
-        west: camera.visibleBounds.west,
-      );
-      final apiService = ref.read(apiServiceProvider);
-      final currentUserId = apiService.getCurrentUserId();
-      final bubblePositions = _bubbleManager.layoutBubbles(
-        _posts,
-        bounds,
-        currentUserId ?? '',
-      );
-      setState(() {
-        _bubblePositions = bubblePositions;
-      });
-    } catch (e) {
-      // エラーが発生した場合はバブル位置の更新をスキップ
-      print('Error updating bubble positions: $e');
-    }
   }
 
   void _showPostDetail(APIPostOutput post) {
@@ -219,12 +200,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _startLocationTracking() async {
     await _liveLocationController.startTracking(
-      onLocationUpdate: (LatLng location) {
-        setState(() {
-          _currentLocation = location;
-        });
-        final cellTrackingService = ref.read(cellTrackingServiceProvider);
-        cellTrackingService.onLocationChanged(location);
+      onLocationUpdate: (LatLng location) async {
+        _currentLocation = location;
+        try {
+          final cellTrackingService = await ref.read(
+            cellTrackingServiceProvider.future,
+          );
+          cellTrackingService.onLocationChanged(location);
+        } catch (e) {
+          // Handle error silently
+        }
       },
       onError: (Object error) {},
     );
@@ -261,8 +246,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _currentLocation = newLocation;
     });
     _locationService.setVirtualLocation(newLocation);
-    final cellTrackingService = ref.read(cellTrackingServiceProvider);
-    cellTrackingService.onLocationChanged(newLocation);
+    ref
+        .read(cellTrackingServiceProvider.future)
+        .then((cellTrackingService) {
+          cellTrackingService.onLocationChanged(newLocation);
+        })
+        .catchError((e) {
+          // Handle error silently
+        });
     _mapController.move(newLocation, _mapController.camera.zoom);
   }
 
@@ -272,130 +263,211 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final cellTrackingServiceAsync = ref.watch(cellTrackingServiceProvider);
     final apiKey = dotenv.env['STADIA_API_KEY'] ?? '';
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(_currentAreaName ?? '読み込み中...'),
-        titleTextStyle: Theme.of(
-          context,
-        ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-      ),
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _currentLocation ?? Config.defaultLocation,
-              initialZoom: Config.defaultZoom,
-              maxZoom: Config.maxZoom,
-              minZoom: Config.minZoom,
-              onPositionChanged: _onPositionChanged,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: "${Config.styleUrl}?api_key={api_key}",
-                additionalOptions: {"api_key": apiKey},
-                maxZoom: 20,
-              ),
-              if (_currentLocation != null)
-                CircleLayer(
-                  circles: [
-                    CircleMarker(
-                      point: _shouldShowDevTools
-                          ? _virtualLocation
-                          : _currentLocation!,
-                      radius: _circleRadiusMeters,
-                      useRadiusInMeter: true,
-                      color: Colors.orange.withValues(alpha: 0.1),
-                      borderColor: Colors.orange,
-                      borderStrokeWidth: 2,
-                    ),
-                  ],
-                ),
-              if (_currentLocation != null)
-                MarkerLayer(
-                  rotate: true,
-                  markers: [
-                    Marker(
-                      point: _shouldShowDevTools
-                          ? _virtualLocation
-                          : _currentLocation!,
-                      width: 40,
-                      height: 40,
-                      alignment: Alignment.center,
-                      child: DecoratedIcon(
-                        icon: Icon(
-                          Icons.navigation,
-                          color: Colors.orange,
-                          size: 40,
-                        ),
-                        decoration: IconDecoration(
-                          border: IconBorder(color: Colors.white, width: 8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              if (_bubblePositions.isNotEmpty)
-                MarkerLayer(
-                  rotate: true,
-                  markers: _bubblePositions.reversed.map((bubblePosition) {
-                    final isInside = _isInsideCircle(bubblePosition.position);
-                    return Marker(
-                      point: bubblePosition.position,
-                      width: 200,
-                      height: 80,
-                      alignment: Alignment.bottomCenter,
-                      child: BubbleWidget(
-                        post: bubblePosition.post,
-                        displayKind: bubblePosition.displayKind,
-                        onTap: () => _showPostDetail(bubblePosition.post),
-                        showContent: isInside,
-                      ),
-                    );
-                  }).toList(),
-                ),
-            ],
-          ),
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: DevJoystick(
-                currentLocation: _virtualLocation,
-                onLocationChange: _onVirtualLocationChange,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return cellTrackingServiceAsync.when(
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, stack) =>
+          const Scaffold(body: Center(child: Text('Error loading services'))),
+      data: (cellTrackingService) => StreamBuilder<List<APIPostOutput>>(
+        stream: cellTrackingService.postsStream,
+        builder: (context, postsSnapshot) {
+          final posts = postsSnapshot.data ?? [];
 
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        spacing: 16,
-        children: [
-          FloatingActionButton(
-            heroTag: "compass",
-            onPressed: _centerOnCurrentLocation,
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
-            child: const Icon(Icons.my_location),
-          ),
-          FloatingActionButton(
-            heroTag: "create_post",
-            onPressed: _showCreatePostDialog,
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
-            child: const Icon(Icons.edit),
-          ),
-        ],
+          return StreamBuilder<String?>(
+            stream: cellTrackingService.areaNameStream,
+            builder: (context, areaSnapshot) {
+              final areaName = areaSnapshot.data ?? '読み込み中...';
+
+              // Update bubble positions when posts change
+              if (posts.isNotEmpty) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _updateBubblePositionsWithPosts(posts);
+                });
+              }
+
+              return Scaffold(
+                extendBodyBehindAppBar: true,
+                appBar: AppBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  title: Text(areaName),
+                  titleTextStyle: Theme.of(context).textTheme.headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                body: Stack(
+                  children: [
+                    FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter:
+                            _currentLocation ?? Config.defaultLocation,
+                        initialZoom: Config.defaultZoom,
+                        maxZoom: Config.maxZoom,
+                        minZoom: Config.minZoom,
+                        onPositionChanged: _onPositionChanged,
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: "${Config.styleUrl}?api_key={api_key}",
+                          additionalOptions: {"api_key": apiKey},
+                          maxZoom: 20,
+                        ),
+                        if (_currentLocation != null)
+                          CircleLayer(
+                            circles: [
+                              CircleMarker(
+                                point: _shouldShowDevTools
+                                    ? _virtualLocation
+                                    : _currentLocation!,
+                                radius: _circleRadiusMeters,
+                                useRadiusInMeter: true,
+                                color: Colors.orange.withValues(alpha: 0.1),
+                                borderColor: Colors.orange,
+                                borderStrokeWidth: 2,
+                              ),
+                            ],
+                          ),
+                        if (_currentLocation != null)
+                          MarkerLayer(
+                            rotate: true,
+                            markers: [
+                              Marker(
+                                point: _shouldShowDevTools
+                                    ? _virtualLocation
+                                    : _currentLocation!,
+                                width: 40,
+                                height: 40,
+                                alignment: Alignment.center,
+                                child: DecoratedIcon(
+                                  icon: Icon(
+                                    Icons.navigation,
+                                    color: Colors.orange,
+                                    size: 40,
+                                  ),
+                                  decoration: IconDecoration(
+                                    border: IconBorder(
+                                      color: Colors.white,
+                                      width: 8,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (_bubblePositions.isNotEmpty)
+                          MarkerLayer(
+                            rotate: true,
+                            markers: _bubblePositions.reversed.map((
+                              bubblePosition,
+                            ) {
+                              final isInside = _isInsideCircle(
+                                bubblePosition.position,
+                              );
+                              return Marker(
+                                point: bubblePosition.position,
+                                width: 200,
+                                height: 80,
+                                alignment: Alignment.bottomCenter,
+                                child: BubbleWidget(
+                                  post: bubblePosition.post,
+                                  displayKind: bubblePosition.displayKind,
+                                  onTap: () =>
+                                      _showPostDetail(bubblePosition.post),
+                                  showContent: isInside,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                      ],
+                    ),
+                    Positioned(
+                      bottom: 16,
+                      left: 16,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: DevJoystick(
+                          currentLocation: _virtualLocation,
+                          onLocationChange: _onVirtualLocationChange,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                floatingActionButton: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  spacing: 16,
+                  children: [
+                    FloatingActionButton(
+                      heroTag: "compass",
+                      onPressed: _centerOnCurrentLocation,
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      child: const Icon(Icons.my_location),
+                    ),
+                    FloatingActionButton(
+                      heroTag: "create_post",
+                      onPressed: _showCreatePostDialog,
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      child: const Icon(Icons.edit),
+                    ),
+                  ],
+                ),
+                floatingActionButtonLocation:
+                    FloatingActionButtonLocation.endFloat,
+              );
+            },
+          );
+        },
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
+  }
+
+  void _updateBubblePositionsWithPosts(List<APIPostOutput> posts) {
+    final currentLoc = _shouldShowDevTools
+        ? _virtualLocation
+        : _currentLocation;
+    if (currentLoc == null) return;
+
+    // Create view bounds based on current location and radius
+    const distance = Distance();
+    final radiusKm = _circleRadiusMeters / 1000;
+
+    final northEast = distance.offset(currentLoc, radiusKm, 45);
+    final southWest = distance.offset(currentLoc, radiusKm, 225);
+
+    final viewBounds = ViewBounds(
+      north: northEast.latitude,
+      south: southWest.latitude,
+      east: northEast.longitude,
+      west: southWest.longitude,
+    );
+
+    ref
+        .read(apiServiceProvider.future)
+        .then((apiService) {
+          final currentUserId = apiService.getCurrentUserId();
+
+          final newPositions = _bubbleManager.layoutBubbles(
+            posts,
+            viewBounds,
+            currentUserId,
+          );
+
+          setState(() {
+            _bubblePositions = newPositions;
+          });
+        })
+        .catchError((e) {
+          // Handle error silently
+        });
   }
 }
