@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../models/bubble_position.dart';
-import '../models/post.dart';
+import '../../../domain/entities/post.dart';
 
 class BubbleWidget extends StatelessWidget {
   final Post post;

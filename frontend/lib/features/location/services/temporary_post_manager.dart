@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../../post/models/post.dart';
+import '../../../domain/entities/post.dart';
 
 /// 一時投稿（5秒で消える投稿）を保持するクラス
 class TemporaryPost {

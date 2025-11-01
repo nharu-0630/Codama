@@ -7,13 +7,12 @@ import 'package:icon_decoration/icon_decoration.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/constants/location_config.dart';
-import '../../../core/providers/app_providers.dart';
-import '../../auth/services/auth_service.dart';
+import '../../../core/di/providers.dart';
 import '../../auth/widgets/signup_modal.dart';
 import '../../location/services/live_location_controller.dart';
 import '../../location/services/location_service.dart';
 import '../../post/models/bubble_position.dart';
-import '../../post/models/post.dart';
+import '../../../domain/entities/post.dart' as domain;
 import '../../post/services/bubble_manager.dart';
 import '../../post/widgets/bubble_widget.dart';
 import '../../post/widgets/create_post_dialog.dart';
@@ -35,7 +34,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final LocationService _locationService = LocationService();
   final LiveLocationController _liveLocationController =
       LiveLocationController();
-  final AuthService _authService = AuthService();
   LatLng? _currentLocation;
   String? _currentAreaName;
   double? _lastZoomLevel;
@@ -43,7 +41,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   LatLng _virtualLocation = LocationConfig.defaultLocation;
 
   final BubbleManager _bubbleManager = BubbleManager();
-  List<Post> _posts = [];
+  List<domain.Post> _posts = [];
   List<BubblePosition> _bubblePositions = [];
 
   static const double _circleRadiusMeters = 150.0;
@@ -74,8 +72,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _checkAuthenticationAndInitialize() async {
     try {
-      await _authService.loadStoredTokens();
-      if (!_authService.isAuthenticated) {
+      final authUseCase = ref.read(authUseCaseProvider);
+      final isAuthenticated = await authUseCase.isAuthenticated();
+      if (!isAuthenticated) {
         _showSignupModal();
         return;
       }
@@ -142,7 +141,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return distanceMeters <= _circleRadiusMeters;
   }
 
-  void _updateBubblePositions() {
+  void _updateBubblePositions() async {
     if (_posts.isEmpty) {
       return;
     }
@@ -154,10 +153,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         east: camera.visibleBounds.east,
         west: camera.visibleBounds.west,
       );
+      final authUseCase = ref.read(authUseCaseProvider);
+      final currentUser = await authUseCase.getCurrentUser();
       final bubblePositions = _bubbleManager.layoutBubbles(
         _posts,
         bounds,
-        _authService.userId,
+        currentUser.id,
       );
       setState(() {
         _bubblePositions = bubblePositions;
@@ -168,8 +169,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  void _showPostDetail(Post post) {
-    final isLandMemory = post.kind == PostKind.land;
+  void _showPostDetail(domain.Post post) {
+    final isLandMemory = post.kind == domain.PostKind.land;
 
     showDialog(
       context: context,

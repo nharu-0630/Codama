@@ -1,4 +1,4 @@
-import 'post.dart';
+import '../../../domain/entities/post.dart';
 
 class CreatePostResponse {
   final Post post;

@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
+import '../../../domain/entities/location_data.dart';
+
 part 'api_client.g.dart';
 
 @RestApi(baseUrl: 'http://localhost:8000')
@@ -131,21 +133,4 @@ class AreaResponse {
     area: Area.fromJson(json['area'] ?? {}),
     cell: Cell.fromJson(json['cell'] ?? {}),
   );
-}
-
-class Area {
-  final String name;
-
-  Area({required this.name});
-
-  factory Area.fromJson(Map<String, dynamic> json) =>
-      Area(name: json['name'] ?? '');
-}
-
-class Cell {
-  final int id;
-
-  Cell({required this.id});
-
-  factory Cell.fromJson(Map<String, dynamic> json) => Cell(id: json['id'] ?? 0);
 }

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../../post/models/post.dart';
+import '../../../domain/entities/post.dart';
 
 /// 投稿の表示管理を担当するクラス
 class PostDisplayManager {

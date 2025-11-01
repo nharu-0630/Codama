@@ -1,7 +1,7 @@
 import 'package:latlong2/latlong.dart';
 
 import '../models/bubble_position.dart';
-import '../models/post.dart';
+import '../../../domain/entities/post.dart';
 
 class ViewBounds {
   final double north;
@@ -84,11 +84,9 @@ class BubbleManager {
 
   /// 表示種別を決定
   BubbleDisplayKind determineDisplayKind(Post post, String? currentUserId) {
-    // 返信の場合
-    if (post.parentPostId != null) {
-      return post.kind == PostKind.land
-          ? BubbleDisplayKind.landReply
-          : BubbleDisplayKind.userReply;
+    // land kind の場合は土地の記憶として扱う
+    if (post.kind == PostKind.land) {
+      return BubbleDisplayKind.landReply;
     }
 
     // 親投稿の場合

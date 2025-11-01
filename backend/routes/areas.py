@@ -1,5 +1,6 @@
-from application.container import container
 from fastapi import APIRouter
+
+from application.container import container
 from interfaces.area_repository import AreaRepositoryInterface
 from schemas.api import APIArea
 

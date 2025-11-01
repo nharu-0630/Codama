@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../services/auth_service.dart';
+import '../../../core/di/providers.dart';
 
-class SignupModal extends StatefulWidget {
+class SignupModal extends ConsumerStatefulWidget {
   final VoidCallback onSuccess;
 
   const SignupModal({super.key, required this.onSuccess});
 
   @override
-  State<SignupModal> createState() => _SignupModalState();
+  ConsumerState<SignupModal> createState() => _SignupModalState();
 }
 
-class _SignupModalState extends State<SignupModal> {
-  final AuthService _authService = AuthService();
+class _SignupModalState extends ConsumerState<SignupModal> {
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -124,9 +124,10 @@ class _SignupModalState extends State<SignupModal> {
     });
 
     try {
-      final success = await _authService.signup();
+      final authUseCase = ref.read(authUseCaseProvider);
+      await authUseCase.signUp();
 
-      if (success) {
+      if (true) {
         widget.onSuccess();
         if (mounted) {
           Navigator.of(context).pop();
