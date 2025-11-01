@@ -164,15 +164,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: Row(
           children: [
             if (isLandMemory) ...[
-              Icon(Icons.auto_awesome, color: Colors.purple.shade400, size: 20),
-              const SizedBox(width: 8),
+              Icon(
+                Icons.auto_awesome,
+                color: Config.brandPurpleIcon,
+                size: Config.iconSizeMedium,
+              ),
+              const SizedBox(width: Config.spacingSmall),
             ],
             Text(
               isLandMemory ? 'とちの声' : 'ひとの声',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 color: isLandMemory
-                    ? Colors.purple.shade700
-                    : Colors.blue.shade700,
+                    ? Config.brandPurpleMediumDark
+                    : Config.brandBlueDark,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -186,10 +190,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Text(
               post.content,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: isLandMemory
-                    ? Colors.purple.shade800
-                    : Colors.blue.shade800,
-              ),
+                    color: isLandMemory
+                        ? Config.brandPurpleDark
+                        : Config.brandBlueDark,
+                  ),
             ),
             Text(
               '聞こえたとき: ${post.createdAt.toLocal().toString().substring(0, 16)}',
@@ -310,7 +314,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               return Scaffold(
                 extendBodyBehindAppBar: true,
                 appBar: AppBar(
-                  backgroundColor: Colors.transparent,
+                  backgroundColor: Config.neutralTransparent,
                   elevation: 0,
                   title: Text(areaName),
                   titleTextStyle: Theme.of(context).textTheme.headlineMedium
@@ -332,7 +336,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         TileLayer(
                           urlTemplate: "${Config.styleUrl}?api_key={api_key}",
                           additionalOptions: {"api_key": apiKey},
-                          maxZoom: 20,
+                          maxZoom: Config.compassZoom,
                         ),
                         if (_currentLocation != null)
                           CircleLayer(
@@ -343,9 +347,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     : _currentLocation!,
                                 radius: _circleRadiusMeters,
                                 useRadiusInMeter: true,
-                                color: Colors.orange.withValues(alpha: 0.1),
-                                borderColor: Colors.orange,
-                                borderStrokeWidth: 2,
+                                color: Config.brandOrange.withValues(
+                                  alpha: Config.alphaVeryLight,
+                                ),
+                                borderColor: Config.brandOrange,
+                                borderStrokeWidth: Config.borderWidthThin,
                               ),
                             ],
                           ),

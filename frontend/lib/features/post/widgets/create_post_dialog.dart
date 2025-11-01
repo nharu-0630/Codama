@@ -1,3 +1,4 @@
+import 'package:codama/core/constants/config.dart';
 import 'package:flutter/material.dart';
 
 class CreatePostDialog extends StatefulWidget {
@@ -37,10 +38,10 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
       return;
     }
 
-    if (text.length > 280) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('投稿は280文字以内で入力してください')));
+    if (text.length > Config.maxPostLength) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('投稿は${Config.maxPostLength}文字以内で入力してください')),
+      );
       return;
     }
 
@@ -65,8 +66,11 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: const Color(0xFFE8D5C4), // 薄い茶色
-      title: const Text('あなたの心の声を聞かせて', style: TextStyle(fontSize: 16)),
+      backgroundColor: Config.customLightBrown,
+      title: Text(
+        'あなたの心の声を聞かせて',
+        style: const TextStyle(fontSize: Config.fontSizeLarge),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,7 +79,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
           TextField(
             controller: _textController,
             maxLines: 4,
-            maxLength: 280,
+            maxLength: Config.maxPostLength,
             decoration: const InputDecoration(
               hintText: 'ここに投稿内容を入力してください...',
               border: OutlineInputBorder(),
@@ -84,18 +88,18 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
             enabled: !_isSubmitting,
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: Config.spacingSmall),
 
           // 文字数表示
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              '${_textController.text.length}/280',
+              '${_textController.text.length}/${Config.maxPostLength}',
               style: TextStyle(
-                fontSize: 12,
-                color: _textController.text.length > 280
-                    ? Colors.red
-                    : Colors.grey,
+                fontSize: Config.fontSizeSmall,
+                color: _textController.text.length > Config.maxPostLength
+                    ? Config.neutralRed
+                    : Config.neutralGrey,
               ),
             ),
           ),
@@ -109,16 +113,16 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
         ElevatedButton(
           onPressed: _isSubmitting ? null : _onSubmit,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
+            backgroundColor: Config.brandOrange,
+            foregroundColor: Config.neutralWhite,
           ),
           child: _isSubmitting
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
+              ? SizedBox(
+                  width: Config.iconSizeMedium,
+                  height: Config.iconSizeMedium,
                   child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
+                    strokeWidth: Config.borderWidthThin,
+                    color: Config.neutralWhite,
                   ),
                 )
               : const Text('投稿'),

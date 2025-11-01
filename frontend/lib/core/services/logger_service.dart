@@ -1,3 +1,4 @@
+import 'package:codama/core/constants/config.dart';
 import 'package:logger/logger.dart';
 
 /// アプリケーション全体で使用するロギングサービス
@@ -16,8 +17,8 @@ class LoggerService {
     _logger = Logger(
       printer: PrettyPrinter(
         methodCount: 0, // 通常のログではメソッド呼び出しスタックを非表示
-        errorMethodCount: 8, // エラー時は8階層分のスタックトレースを表示
-        lineLength: 120, // 1行あたりの最大文字数
+        errorMethodCount: Config.loggerErrorMethodCount, // エラー時は指定階層分のスタックトレースを表示
+        lineLength: Config.loggerLineLength, // 1行あたりの最大文字数
         colors: true, // カラー出力を有効化
         printEmojis: true, // ログレベルに応じた絵文字を表示
         dateTimeFormat: DateTimeFormat.none, // 日時フォーマットは無効（デバイスのログに含まれるため）

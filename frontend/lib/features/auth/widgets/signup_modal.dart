@@ -20,11 +20,11 @@ class _SignupModalState extends ConsumerState<SignupModal> {
   Widget build(BuildContext context) {
     return Dialog(
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(Config.spacingXXLarge),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
-          spacing: 16,
+          spacing: Config.spacingLarge,
           children: [
             Text(
               'Codama',
@@ -42,27 +42,27 @@ class _SignupModalState extends ConsumerState<SignupModal> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _handleSignup,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Config.brandOrange,
+                  foregroundColor: Config.neutralWhite,
+                  padding: const EdgeInsets.symmetric(vertical: Config.spacingLarge),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
+                    ? SizedBox(
+                        height: Config.spacingXXLarge,
+                        width: Config.spacingXXLarge,
                         child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
+                          color: Config.neutralWhite,
+                          strokeWidth: Config.borderWidthThin,
                         ),
                       )
                     : Text(
                         '話しかけてみる',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: Config.neutralWhite,
                         ),
                       ),
               ),
@@ -72,7 +72,7 @@ class _SignupModalState extends ConsumerState<SignupModal> {
                 _errorMessage!,
                 style: Theme.of(
                   context,
-                ).textTheme.bodySmall?.copyWith(color: Colors.red),
+                ).textTheme.bodySmall?.copyWith(color: Config.neutralRed),
               ),
             ],
             Text(

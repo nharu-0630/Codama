@@ -1,12 +1,13 @@
 import 'dart:async';
 
+import 'package:codama/core/constants/config.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 /// 開発用ジョイスティック
 ///
 /// 仮想位置操作のためのUI部品
-/// - 円形ドラッグエリア（直径100dp）
+/// - 円形ドラッグエリア（直径Config.joystickSize）
 /// - 中央ノブ操作でOffset値を計算
 /// - 操作終了時の自動センタリング
 /// - 地図座標への変換とコールバック
@@ -28,10 +29,8 @@ class DevJoystick extends StatefulWidget {
 }
 
 class _DevJoystickState extends State<DevJoystick> {
-  static const double _joystickSize = 100.0;
-  static const double _knobSize = 40.0;
-  static const double _maxDragDistance = (_joystickSize - _knobSize) / 2;
-  static const double _movementSensitivity = 0.0001; // 移動感度調整
+  static const double _maxDragDistance =
+      (Config.joystickSize - Config.joystickKnobSize) / 2;
 
   Offset _knobOffset = Offset.zero;
   bool _isDragging = false;
@@ -40,14 +39,16 @@ class _DevJoystickState extends State<DevJoystick> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: _joystickSize,
-      height: _joystickSize,
+      width: Config.joystickSize,
+      height: Config.joystickSize,
       decoration: BoxDecoration(
-        color: const Color(0x88000000), // 半透明黒
+        color: Config.customSemiTransparentBlack,
         shape: BoxShape.circle,
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.3),
-          width: 2,
+          color: Config.neutralWhite.withValues(
+            alpha: Config.alphaSemiTransparent,
+          ),
+          width: Config.borderWidthThin,
         ),
       ),
       child: GestureDetector(
@@ -59,10 +60,10 @@ class _DevJoystickState extends State<DevJoystick> {
           children: [
             // ジョイスティックの背景
             Container(
-              width: _joystickSize,
-              height: _joystickSize,
+              width: Config.joystickSize,
+              height: Config.joystickSize,
               decoration: BoxDecoration(
-                color: Colors.transparent,
+                color: Config.neutralTransparent,
                 shape: BoxShape.circle,
               ),
             ),
@@ -70,23 +71,25 @@ class _DevJoystickState extends State<DevJoystick> {
             Transform.translate(
               offset: _knobOffset,
               child: Container(
-                width: _knobSize,
-                height: _knobSize,
+                width: Config.joystickKnobSize,
+                height: Config.joystickKnobSize,
                 decoration: BoxDecoration(
-                  color: _isDragging ? Colors.blue : Colors.white,
+                  color: _isDragging ? Config.brandBlueMedium : Config.neutralWhite,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 4,
+                      color: Config.neutralBlack.withValues(
+                        alpha: Config.alphaSemiTransparent,
+                      ),
+                      blurRadius: 4.0,
                       offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: Icon(
                   Icons.location_searching,
-                  color: _isDragging ? Colors.white : Colors.black87,
-                  size: 20,
+                  color: _isDragging ? Config.neutralWhite : Config.neutralBlack87,
+                  size: Config.joystickIconSize,
                 ),
               ),
             ),
@@ -111,7 +114,10 @@ class _DevJoystickState extends State<DevJoystick> {
 
   void _onPanUpdate(DragUpdateDetails details) {
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final center = Offset(_joystickSize / 2, _joystickSize / 2);
+    final center = Offset(
+      Config.joystickSize / 2,
+      Config.joystickSize / 2,
+    );
     final localPosition = renderBox.globalToLocal(details.globalPosition);
 
     // 中心からの相対位置を計算
@@ -144,8 +150,8 @@ class _DevJoystickState extends State<DevJoystick> {
 
     // 緯度・経度の変更量を計算
     // X軸: 東西方向（経度）、Y軸: 南北方向（緯度、反転）
-    final deltaLng = normalizedX * _movementSensitivity;
-    final deltaLat = -normalizedY * _movementSensitivity; // Y軸反転（上=北）
+    final deltaLng = normalizedX * Config.joystickMovementSensitivity;
+    final deltaLat = -normalizedY * Config.joystickMovementSensitivity; // Y軸反転（上=北）
 
     // 新しい仮想位置を計算
     final newLocation = LatLng(
@@ -160,11 +166,14 @@ class _DevJoystickState extends State<DevJoystick> {
   /// 移動タイマーを開始
   void _startMovementTimer() {
     _movementTimer?.cancel();
-    _movementTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
-      if (_isDragging && _knobOffset != Offset.zero) {
-        _updateVirtualLocation(_knobOffset);
-      }
-    });
+    _movementTimer = Timer.periodic(
+      Config.joystickUpdateInterval,
+      (_) {
+        if (_isDragging && _knobOffset != Offset.zero) {
+          _updateVirtualLocation(_knobOffset);
+        }
+      },
+    );
   }
 
   /// 移動タイマーを停止
