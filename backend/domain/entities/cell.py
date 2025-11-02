@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from domain.entities import Area
@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 @dataclass
 class Cell:
     """Cellエンティティ"""
+
     id: int
     geo_hash: str
     location: str

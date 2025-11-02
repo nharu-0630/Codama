@@ -1,8 +1,9 @@
 import asyncio
 import threading
 
-from application.container import container
 from fastapi import APIRouter
+
+from application.container import container
 from interfaces.area_repository import AreaRepositoryInterface
 from interfaces.prompt_repository import PromptRepositoryInterface
 from schemas.api import UpdatePromptResponse

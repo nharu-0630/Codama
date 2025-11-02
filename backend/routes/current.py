@@ -1,5 +1,6 @@
-from application.container import container
 from fastapi import APIRouter, HTTPException
+
+from application.container import container
 from interfaces.area_repository import AreaRepositoryInterface
 from interfaces.cell_repository import CellRepositoryInterface
 from schemas.api import APIArea, APICell, CurrentResponse

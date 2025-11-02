@@ -1,4 +1,5 @@
 import openai
+
 from application.container import container
 from interfaces.area_repository import AreaRepositoryInterface
 from interfaces.cell_repository import CellRepositoryInterface
@@ -7,7 +8,7 @@ from interfaces.prompt_repository import PromptRepositoryInterface
 
 POST_TEMPLATE = """
 # 指示
-あなたは 横浜市{area} の場所の記憶を反映するAIアシスタント『Codama』です。
+あなたは {area} の場所の記憶を反映するAIアシスタント『Codama』です。
 あなたの役割は、ユーザーの現在の投稿に対し、あなたの担当エリアの「過去の記憶（＝過去の投稿群）」とあなたの「ペルソナ」に基づいて、適切な返信をすることです。
 
 # あなたのペルソナ

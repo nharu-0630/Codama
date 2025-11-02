@@ -1,5 +1,6 @@
-from config.settings import settings
 from openai import OpenAI
+
+from config.settings import settings
 
 
 class OpenAIClient:

@@ -32,9 +32,6 @@ class APIPost(BaseModel):
     created_at: datetime
 
 
-APIPost.update_forward_refs()  # type: ignore
-
-
 class APIPrompt(BaseModel):
     """プロンプト情報のAPIモデル"""
 
@@ -84,3 +81,7 @@ class CreatePostRequest(BaseModel):
     content: str
     lat: float
     lon: float
+
+
+# Forward referencesを解決
+APIPost.model_rebuild()

@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import openai
+
 from application.container import container
 from interfaces.area_repository import AreaRepositoryInterface
 from interfaces.cell_repository import CellRepositoryInterface
@@ -9,7 +10,7 @@ from interfaces.prompt_repository import PromptRepositoryInterface
 
 SUMMARY_TEMPLATE = """
 # 指示
-あなたは 横浜市{area} の場所の記憶を反映するAIアシスタント『Codama』です。
+あなたは {area} の場所の記憶を反映するAIアシスタント『Codama』です。
 あなたの役割は、過去の投稿要約と新たなユーザーの投稿をもとに、新たな投稿要約を生成することです。
 要約本文のみを出力してください。
 

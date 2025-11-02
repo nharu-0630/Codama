@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
-from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from domain.entities import Cell
@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 @dataclass
 class UserPost:
     """ユーザー投稿エンティティ"""
+
     id: int
     uuid: UUID
     content: str
@@ -23,6 +24,7 @@ class UserPost:
 @dataclass
 class LLMPost:
     """LLM返信エンティティ"""
+
     id: int
     uuid: UUID
     content: str

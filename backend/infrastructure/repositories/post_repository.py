@@ -1,7 +1,7 @@
 from typing import Any, List, cast
 from uuid import UUID
 
-import geohash  # type: ignore
+import geohash
 
 from domain.entities import Area, Cell, LLMPost, UserPost
 from infrastructure.clients.database_client import database_client
@@ -30,10 +30,10 @@ class PostRepository(PostRepositoryInterface):
         data = cast(dict[str, Any], post_response.data)
         cell_data = data["cells"]
         area_data = cell_data["areas"]
-        
+
         # Areaエンティティを作成
         area = Area(id=area_data["id"], name=area_data["name"])
-        
+
         # Cellエンティティを作成
         cell = Cell(
             id=cell_data["id"],
@@ -42,7 +42,7 @@ class PostRepository(PostRepositoryInterface):
             area_id=cell_data["area_id"],
             area=area,
         )
-        
+
         return UserPost(
             id=data["id"],
             uuid=data["uuid"],
@@ -56,34 +56,31 @@ class PostRepository(PostRepositoryInterface):
 
     def get_user_posts_by_location(self, geo_hash: str, length: int) -> List[UserPost]:
         """位置でユーザー投稿を取得"""
-        neighbor_hashes = geohash.neighbors(geo_hash)  # type: ignore
-        geo_hashes = [geo_hash] + neighbor_hashes  # type: ignore
+        neighbor_hashes = geohash.neighbors(geo_hash)
+        geo_hashes: list[str] = [geo_hash] + neighbor_hashes
 
         query = (
             self.db_client.supabase.from_("user_posts")
             .select(
                 "*, cells!inner(id, geo_hash, location, area_id, created_at, areas(id, name, created_at))"
             )
-            .in_("cells.geo_hash", geo_hashes)  # type: ignore
+            .in_("cells.geo_hash", geo_hashes)
             .order("created_at", desc=True)
             .limit(length)
         )
 
         posts = query.execute()
         data = cast(list[dict[str, Any]], posts.data)
-        return [
-            self._create_user_post_with_cell(item)
-            for item in data
-        ]
+        return [self._create_user_post_with_cell(item) for item in data]
 
     def _create_user_post_with_cell(self, data: dict[str, Any]) -> UserPost:
         """データからUserPostとCellを適切に設定して作成"""
         cell_data = data["cells"]
         area_data = cell_data["areas"]
-        
+
         # Areaエンティティを作成
         area = Area(id=area_data["id"], name=area_data["name"])
-        
+
         # Cellエンティティを作成
         cell = Cell(
             id=cell_data["id"],
@@ -92,7 +89,7 @@ class PostRepository(PostRepositoryInterface):
             area_id=cell_data["area_id"],
             area=area,
         )
-        
+
         return UserPost(
             id=data["id"],
             uuid=data["uuid"],
@@ -115,10 +112,7 @@ class PostRepository(PostRepositoryInterface):
             .execute()
         )
         data = cast(list[dict[str, Any]], posts.data)
-        return [
-            self._create_user_post_with_cell(item)
-            for item in data
-        ]
+        return [self._create_user_post_with_cell(item) for item in data]
 
     def get_user_posts_by_uuids(self, post_uuids: List[str]) -> List[UserPost]:
         """UUIDリストで投稿を取得"""
@@ -133,10 +127,7 @@ class PostRepository(PostRepositoryInterface):
             .execute()
         )
         data = cast(list[dict[str, Any]], posts.data)
-        return [
-            self._create_user_post_with_cell(item)
-            for item in data
-        ]
+        return [self._create_user_post_with_cell(item) for item in data]
 
     def create_user_post(
         self, content: str, user_uuid: UUID, cell_id: int, location_wkt: str
@@ -183,10 +174,7 @@ class PostRepository(PostRepositoryInterface):
         )
 
         data = cast(list[dict[str, Any]], posts.data)
-        return [
-            self._create_user_post_with_cell(item)
-            for item in data
-        ]
+        return [self._create_user_post_with_cell(item) for item in data]
 
     def get_recent_user_posts_by_cell_ids(
         self, cell_ids: List[int], limit: int = 100
@@ -207,10 +195,7 @@ class PostRepository(PostRepositoryInterface):
         )
 
         data = cast(list[dict[str, Any]], posts.data)
-        return [
-            self._create_user_post_with_cell(item)
-            for item in data
-        ]
+        return [self._create_user_post_with_cell(item) for item in data]
 
     def create_llm_post(
         self, content: str, user_post_uuid: UUID, location_wkt: str
@@ -245,7 +230,7 @@ class PostRepository(PostRepositoryInterface):
         """投稿UUIDリストに対する返信を取得"""
         if not post_uuids:
             return []
-        
+
         replies = (
             self.db_client.supabase.from_("llm_posts")
             .select("*")

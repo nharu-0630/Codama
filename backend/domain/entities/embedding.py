@@ -6,6 +6,7 @@ from uuid import UUID
 @dataclass
 class EmbeddingUserPost:
     """埋め込みユーザー投稿エンティティ"""
+
     id: int
     embedding: list[float]
     user_post_uuid: UUID

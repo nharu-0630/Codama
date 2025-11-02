@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+
 from infrastructure.clients.database_client import database_client
 from schemas.api import SignupResponse
 

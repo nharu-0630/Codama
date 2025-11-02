@@ -18,9 +18,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
     # 依存性注入コンテナを使用するための設定
-    # FastAPIインスタンスにカスタム属性を追加
-    app.container = container  # type: ignore[attr-defined]
+    app.state.container = container
 
     # 各エンドポイントのルーターを登録
     app.include_router(health.router)

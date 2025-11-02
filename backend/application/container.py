@@ -47,7 +47,7 @@ class DIContainer:
         """実装クラスからインスタンスを生成"""
         import inspect
 
-        sig = inspect.signature(impl_class.__init__)
+        sig = inspect.signature(impl_class)
         params = sig.parameters
 
         kwargs = {}

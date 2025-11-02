@@ -1,9 +1,12 @@
 from time import sleep
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
+from supabase_auth import User
 
 from application.container import container
 from config.settings import settings
 from domain.entities import LLMPost, UserPost
-from fastapi import APIRouter, Depends, HTTPException
 from interfaces.cell_repository import CellRepositoryInterface
 from interfaces.embedding_repository import EmbeddingRepositoryInterface
 from interfaces.post_repository import PostRepositoryInterface
@@ -106,7 +109,7 @@ async def get_posts(lat: float, lon: float):
 @router.get(
     "/me", response_model=PostsResponse, dependencies=[Depends(get_current_user)]
 )
-async def get_my_posts(user=Depends(get_current_user)):  # type: ignore
+async def get_my_posts(user: User = Depends(get_current_user)):
     """自分の投稿一覧を取得"""
     # 依存性注入コンテナからリポジトリを取得
     post_repo: PostRepositoryInterface = container.resolve(PostRepositoryInterface)
@@ -137,7 +140,7 @@ async def get_my_posts(user=Depends(get_current_user)):  # type: ignore
 @router.post("", response_model=CreatePostResponse)
 async def create_post(
     request: CreatePostRequest,
-    user=Depends(get_current_user),  # type: ignore
+    user: User = Depends(get_current_user),
 ):
     """新しい投稿を作成"""
     # 依存性注入コンテナからリポジトリを取得
@@ -158,7 +161,7 @@ async def create_post(
     # ユーザー投稿を作成
     db_created_post = post_repo.create_user_post(
         content=request.content,
-        user_uuid=user.id,
+        user_uuid=UUID(user.id),
         cell_id=cell.id,
         location_wkt=encode_wkt_location(location[0], location[1]),
     )
